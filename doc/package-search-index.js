@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"ru.sigsegv.lab5"},{"l":"ru.sigsegv.lab5.command"},{"l":"ru.sigsegv.lab5.model"},{"l":"ru.sigsegv.lab5.serde"},{"l":"ru.sigsegv.lab5.serde.json"},{"l":"ru.sigsegv.lab5.util"}];updateSearchResults();
