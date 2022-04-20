@@ -27,7 +27,7 @@ public abstract class Client {
         this.serverAddress = serverAddress;
     }
 
-    public abstract <T>  Response<T> request(Request<?> request) throws IOException;
+    public abstract <T> Response<T> request(Request<?> request) throws IOException;
 
     public <T> Response<T> request(Command cmd, Object arg) throws IOException {
         return request(new Request<>(cmd, arg));

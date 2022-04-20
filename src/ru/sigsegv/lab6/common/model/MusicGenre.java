@@ -24,6 +24,7 @@ public enum MusicGenre implements Serializable {
 
     /**
      * Tries to interpret a string as a music genre
+     *
      * @param str input string
      * @return corresponding enum constant, or null if there is no such music genre
      */

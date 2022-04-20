@@ -12,8 +12,9 @@ public class OwnedSerializers {
 
     /**
      * Gets a serializer
+     *
      * @param clazz serializable class
-     * @param <T> type of the class
+     * @param <T>   type of the class
      * @return serializer, or null if it doesn't exist
      */
     public static <T> OwnedSerializer<T> get(Class<T> clazz) {
@@ -22,9 +23,10 @@ public class OwnedSerializers {
 
     /**
      * Registers a serializer
-     * @param clazz serializable class
+     *
+     * @param clazz      serializable class
      * @param serializer serializer
-     * @param <T> type of the class
+     * @param <T>        type of the class
      */
     public static <T> void register(Class<T> clazz, OwnedSerializer<T> serializer) {
         serializers.put(clazz, serializer);

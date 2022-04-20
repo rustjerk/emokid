@@ -18,7 +18,8 @@ public class ServerApp {
 
         File databasePath = getDatabasePath();
         Database database = loadDatabase(databasePath);
-        setupSignalHandler(database, databasePath);
+        setupSaveHandler(database, databasePath);
+        setupShutdownHandler(database, databasePath);
 
         CommandHandler handler = new CommandHandler(database);
         SocketAddress address = new InetSocketAddress(port);
@@ -46,14 +47,24 @@ public class ServerApp {
         return database;
     }
 
-    private static void setupSignalHandler(Database database, File databasePath) {
+    private static void saveDatabase(Database database, File databasePath) {
+        try {
+            System.err.println("Saving...");
+            database.save(databasePath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void setupSaveHandler(Database database, File databasePath) {
         Signal.handle(new Signal("TSTP"), signal -> {
-            try {
-                System.err.println("Saving...");
-                database.save(databasePath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            saveDatabase(database, databasePath);
         });
+    }
+
+    private static void setupShutdownHandler(Database database, File databasePath) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            saveDatabase(database, databasePath);
+        }));
     }
 }

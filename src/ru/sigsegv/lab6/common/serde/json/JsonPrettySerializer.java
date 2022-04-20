@@ -38,6 +38,7 @@ public class JsonPrettySerializer implements Serializer {
 
     /**
      * Gets the resulting string.
+     *
      * @return the resulting string
      */
     public String getString() {

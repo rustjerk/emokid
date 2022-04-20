@@ -6,6 +6,7 @@ package ru.sigsegv.lab6.common.util;
 public class IdGenerator {
     /**
      * Generates an ID
+     *
      * @return unique id
      */
     public static long generateId() {

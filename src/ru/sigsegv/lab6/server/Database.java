@@ -26,6 +26,7 @@ public class Database {
 
     /**
      * Gets set of the music bands
+     *
      * @return set of the music bands
      */
     public HashSet<MusicBand> getMusicBandSet() {
@@ -34,6 +35,7 @@ public class Database {
 
     /**
      * Gets initialization time
+     *
      * @return initialization time
      */
     public LocalDateTime getInitializationTime() {
@@ -42,6 +44,7 @@ public class Database {
 
     /**
      * Gets type of the collection
+     *
      * @return type of the collection
      */
     public String getType() {
@@ -50,6 +53,7 @@ public class Database {
 
     /**
      * Saves database to a file
+     *
      * @param file file to save into
      * @throws IOException if there is an error writing to file
      */
@@ -72,8 +76,9 @@ public class Database {
 
     /**
      * Loads database from a file
+     *
      * @param file file to load from
-     * @throws IOException if there is an error reading from file
+     * @throws IOException          if there is an error reading from file
      * @throws DeserializeException if the input has errors
      */
     public void load(File file) throws IOException, DeserializeException {

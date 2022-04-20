@@ -8,6 +8,7 @@ import java.util.Map;
 
 /**
  * Serializer of struct-like classes
+ *
  * @param <T> type of the class
  */
 public class StructSerializer<T> {
@@ -57,8 +58,9 @@ public class StructSerializer<T> {
 
     /**
      * Serializes a struct-like class instance
+     *
      * @param serializer serializer
-     * @param source reference of the object to serialize
+     * @param source     reference of the object to serialize
      */
     public void serialize(Serializer serializer, T source) {
         Serializer.Map map = serializer.serializeMap();

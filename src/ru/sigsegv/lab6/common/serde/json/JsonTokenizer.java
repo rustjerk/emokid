@@ -28,6 +28,7 @@ public class JsonTokenizer {
 
     /**
      * Reads the next token from the input.
+     *
      * @return the next token
      * @throws DeserializeException if the input is incorrect
      */
@@ -73,6 +74,7 @@ public class JsonTokenizer {
 
     /**
      * Returns the string payload of the previous string token
+     *
      * @return the string payload
      */
     public String getString() {
@@ -81,6 +83,7 @@ public class JsonTokenizer {
 
     /**
      * Returns the number payload of the previous number token
+     *
      * @return the number payload
      */
     public double getNumber() {

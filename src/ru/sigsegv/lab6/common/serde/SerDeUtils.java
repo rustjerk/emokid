@@ -10,6 +10,7 @@ import java.lang.reflect.Modifier;
 public class SerDeUtils {
     /**
      * Enquotes a string, escaping various characters
+     *
      * @param str string to enquote
      * @return quoted string
      */
@@ -25,8 +26,9 @@ public class SerDeUtils {
 
     /**
      * Finds a public constructor without arguments
+     *
      * @param clazz class to inspect
-     * @param <T> type of the class
+     * @param <T>   type of the class
      * @return public constructor without arguments, or null if it doesn't exist
      */
     public static <T> Constructor<T> getPublicCtor(Class<T> clazz) {
@@ -43,9 +45,10 @@ public class SerDeUtils {
 
     /**
      * Finds a public method with given arguments
+     *
      * @param clazz class to inspect
-     * @param name name of the method
-     * @param args arguments of the method
+     * @param name  name of the method
+     * @param args  arguments of the method
      * @return method, or null if it doesn't exist
      */
     public static Method getPublicMethod(Class<?> clazz, String name, Class<?>... args) {
@@ -71,6 +74,7 @@ public class SerDeUtils {
 
     /**
      * Gets name of field's setter
+     *
      * @param fieldName name of the field
      * @return name of the setter
      */
@@ -80,6 +84,7 @@ public class SerDeUtils {
 
     /**
      * Gets name of field's getter
+     *
      * @param fieldName name of the field
      * @return name of the getter
      */

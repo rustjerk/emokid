@@ -18,7 +18,10 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -368,11 +371,12 @@ public class CommandHandler {
     }
 
     private static String getRootExceptionMessage(Throwable e) {
-        return Stream.iterate(e, Throwable::getCause)
+        Throwable cause = Stream.iterate(e, Throwable::getCause)
                 .filter(element -> element.getCause() == null)
                 .findFirst()
-                .orElse(e)
-                .getMessage();
+                .orElse(e);
+        String message = cause.getMessage();
+        return message == null ? cause.toString() : message;
     }
 
     @Retention(RetentionPolicy.RUNTIME)

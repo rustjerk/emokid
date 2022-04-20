@@ -13,6 +13,7 @@ public class ArgsSplitter {
 
     /**
      * Split arguments (shell like)
+     *
      * @param str string with arguments
      * @return arguments
      */

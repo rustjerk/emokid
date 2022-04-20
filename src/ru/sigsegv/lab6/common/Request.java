@@ -2,7 +2,7 @@ package ru.sigsegv.lab6.common;
 
 import java.io.Serializable;
 
-public class Request<T> implements Serializable  {
+public class Request<T> implements Serializable {
     private final Command command;
     private final T argument;
 

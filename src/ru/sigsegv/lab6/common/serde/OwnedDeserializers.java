@@ -15,8 +15,9 @@ public class OwnedDeserializers {
 
     /**
      * Get a deserializer
+     *
      * @param clazz Deserializable class
-     * @param <T> Type of the class
+     * @param <T>   Type of the class
      * @return owned deserializer, or null if it doesn't exist
      */
     public static <T> OwnedDeserializer<T> get(Class<T> clazz) {
@@ -25,9 +26,10 @@ public class OwnedDeserializers {
 
     /**
      * Register a deserializer
-     * @param clazz deserializable class
+     *
+     * @param clazz        deserializable class
      * @param deserializer deserializer
-     * @param <T> Type of the class
+     * @param <T>          Type of the class
      */
     public static <T> void register(Class<T> clazz, OwnedDeserializer<T> deserializer) {
         deserializers.put(clazz, deserializer);

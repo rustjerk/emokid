@@ -6,6 +6,7 @@ package ru.sigsegv.lab6.common.serde;
 public interface Deserializer {
     /**
      * Tries to deserialize a boolean
+     *
      * @return a boolean
      * @throws DeserializeException if there is no boolean
      */
@@ -13,6 +14,7 @@ public interface Deserializer {
 
     /**
      * Tries to deserialize a long
+     *
      * @return a long
      * @throws DeserializeException if there is no long
      */
@@ -20,6 +22,7 @@ public interface Deserializer {
 
     /**
      * Tries to deserialize a double
+     *
      * @return a double
      * @throws DeserializeException if there is no double
      */
@@ -27,6 +30,7 @@ public interface Deserializer {
 
     /**
      * Tries to deserialize a string
+     *
      * @return a string
      * @throws DeserializeException if there is no string
      */
@@ -34,6 +38,7 @@ public interface Deserializer {
 
     /**
      * Tries to deserialize a map
+     *
      * @return map deserializer
      * @throws DeserializeException if there is no map
      */
@@ -41,6 +46,7 @@ public interface Deserializer {
 
     /**
      * Tries to deserialize a sequence
+     *
      * @return sequence deserializer
      * @throws DeserializeException if there is no sequence
      */
@@ -48,7 +54,8 @@ public interface Deserializer {
 
     /**
      * Formats an error message, including the current deserializer location
-     * @param fmt format string
+     *
+     * @param fmt  format string
      * @param args format arguments
      * @return error message
      */
@@ -58,9 +65,11 @@ public interface Deserializer {
 
     /**
      * Sets a help message to be shown during command-line deserialization
+     *
      * @param help a message to be displayed during deserialization of the next simple field
      */
-    default void setHelp(String help) {}
+    default void setHelp(String help) {
+    }
 
     /**
      * Map deserializer
@@ -68,7 +77,8 @@ public interface Deserializer {
     interface Map {
         /**
          * Parses the next key
-         * @param keyHint name of the next key
+         *
+         * @param keyHint    name of the next key
          * @param isRequired is the next key required
          * @return an actual key, or null if there are no more keys
          * @throws DeserializeException if the input is malformed
@@ -77,6 +87,7 @@ public interface Deserializer {
 
         /**
          * Parses the next value. Must be called after nextKey
+         *
          * @param deserializable value to deserialize
          * @throws DeserializeException if the input is malformed
          */
@@ -84,6 +95,7 @@ public interface Deserializer {
 
         /**
          * Finishes parsing the map. Must be called after all calls to nextKey and nextValue
+         *
          * @throws DeserializeException if the input is malformed
          */
         void finish() throws DeserializeException;
@@ -101,6 +113,7 @@ public interface Deserializer {
 
         /**
          * Parses the next value
+         *
          * @param deserializable value to deserialize
          * @throws DeserializeException if the input is malformed
          */
@@ -108,6 +121,7 @@ public interface Deserializer {
 
         /**
          * Finishes parsing the sequence. Must be called after all calls to nextValue
+         *
          * @throws DeserializeException if the input is malformed
          */
         void finish() throws DeserializeException;
