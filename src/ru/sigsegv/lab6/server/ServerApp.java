@@ -57,7 +57,15 @@ public class ServerApp {
     }
 
     private static void setupSaveHandler(Database database, File databasePath) {
-        Signal.handle(new Signal("TSTP"), signal -> {
+        Signal signal;
+
+        try {
+            signal = new Signal("TSTP");
+        } catch (Exception e) {
+            return;
+        }
+
+        Signal.handle(signal, s -> {
             saveDatabase(database, databasePath);
         });
     }

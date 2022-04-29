@@ -16,9 +16,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class CommandHandler implements RequestHandler {
+    private static final Logger logger = Logger.getLogger(CommandHandler.class.getSimpleName());
+
     private final Database database;
 
     private final HashMap<Command, RequestHandler> commands = gatherCommands();
@@ -125,6 +128,10 @@ public class CommandHandler implements RequestHandler {
 
     @Override
     public Response<?> handle(Request<?> request) {
+        logger.info(request.getCommand().toString());
+        if (request.getArgument() != null)
+            logger.info(request.getArgument().toString());
+
         RequestHandler handler = commands.get(request.getCommand());
         if (handler == null)
             return Response.invalidRequest();
