@@ -45,6 +45,6 @@ public class Response<T> implements Serializable {
 
     public enum Status {
         SUCCESS,
-        ERROR;
+        ERROR
     }
 }

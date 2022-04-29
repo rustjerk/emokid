@@ -14,5 +14,5 @@ public enum JsonToken {
     L_BRACE,
     R_BRACE,
     NUMBER,
-    STRING;
+    STRING
 }

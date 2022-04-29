@@ -107,27 +107,19 @@ public class JsonTokenizer {
 
             if (isEscaped && unicodeLen == -1) {
                 switch (c) {
-                    case 'b':
-                        c = '\b';
-                        break;
-                    case 'f':
-                        c = '\f';
-                        break;
-                    case 'n':
-                        c = '\n';
-                        break;
-                    case 'r':
-                        c = '\r';
-                        break;
-                    case 't':
-                        c = '\t';
-                        break;
-                    case 'u':
+                    case 'b' -> c = '\b';
+                    case 'f' -> c = '\f';
+                    case 'n' -> c = '\n';
+                    case 'r' -> c = '\r';
+                    case 't' -> c = '\t';
+                    case 'u' -> {
                         unicodeLen = 0;
                         unicodeChar = 0;
                         continue;
-                    default:
-                        // Do nothing
+                    }
+                    default -> {
+                    }
+                    // Do nothing
                 }
             } else if (unicodeLen >= 0) {
                 int digit = Character.digit(c, 16);

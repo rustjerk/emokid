@@ -65,14 +65,10 @@ public class ServerApp {
             return;
         }
 
-        Signal.handle(signal, s -> {
-            saveDatabase(database, databasePath);
-        });
+        Signal.handle(signal, s -> saveDatabase(database, databasePath));
     }
 
     private static void setupShutdownHandler(Database database, File databasePath) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            saveDatabase(database, databasePath);
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> saveDatabase(database, databasePath)));
     }
 }

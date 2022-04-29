@@ -27,14 +27,11 @@ public class JsonDeserializer implements Deserializer {
 
     @Override
     public boolean deserializeBoolean() throws DeserializeException {
-        switch (next()) {
-            case TRUE:
-                return true;
-            case FALSE:
-                return false;
-            default:
-                throw new DeserializeException(formatErrorMessage("boolean expected"));
-        }
+        return switch (next()) {
+            case TRUE -> true;
+            case FALSE -> false;
+            default -> throw new DeserializeException(formatErrorMessage("boolean expected"));
+        };
     }
 
     @Override

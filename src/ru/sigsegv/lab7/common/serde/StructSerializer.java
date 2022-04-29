@@ -29,7 +29,7 @@ public class StructSerializer<T> {
 
             if (getter == null && !isPublic) continue;
 
-            OwnedSerializer<Object> ownedSerializer = (OwnedSerializer<Object>) OwnedSerializers.get(type);
+            OwnedSerializer<Object> ownedSerializer = OwnedSerializers.get(type);
 
             FieldNullPredicate nullPredicate = getter == null
                     ? (o) -> field.get(o) == null

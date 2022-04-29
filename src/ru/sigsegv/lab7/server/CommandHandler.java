@@ -148,19 +148,17 @@ public class CommandHandler implements RequestHandler {
             RequestHandler handler;
 
             switch (method.getParameterCount()) {
-                case 0:
-                    handler = request -> {
-                        if (request.getArgument() != null)
-                            return Response.invalidRequest();
+                case 0 -> handler = request -> {
+                    if (request.getArgument() != null)
+                        return Response.invalidRequest();
 
-                        try {
-                            return (Response<?>) method.invoke(this);
-                        } catch (IllegalAccessException | InvocationTargetException e) {
-                            throw new RuntimeException(e);
-                        }
-                    };
-                    break;
-                case 1:
+                    try {
+                        return (Response<?>) method.invoke(this);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+                case 1 -> {
                     Parameter parameter = method.getParameters()[0];
                     handler = request -> {
                         Object argument = request.getArgument();
@@ -178,9 +176,8 @@ public class CommandHandler implements RequestHandler {
                             return Response.exception(e);
                         }
                     };
-                    break;
-                default:
-                    throw new UnsupportedOperationException("command handlers cannot receive more than 1 argument");
+                }
+                default -> throw new UnsupportedOperationException("command handlers cannot receive more than 1 argument");
             }
 
             commandMethods.put(annotation.value(), handler);

@@ -12,5 +12,5 @@ public enum Command {
     REMOVE_GREATER,
     REMOVE_LOWER,
     SHOW,
-    UPDATE;
+    UPDATE
 }
