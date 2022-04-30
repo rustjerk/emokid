@@ -1,7 +1,7 @@
 package ru.sigsegv.lab7.common.serde.json;
 
+import ru.sigsegv.lab7.common.serde.SerDe;
 import ru.sigsegv.lab7.common.serde.SerDeUtils;
-import ru.sigsegv.lab7.common.serde.Serializable;
 import ru.sigsegv.lab7.common.serde.Serializer;
 
 /**
@@ -66,11 +66,11 @@ public class JsonPrettySerializer implements Serializer {
     }
 
     @Override
-    public Serializer.Map serializeMap() {
+    public Map serializeMap() {
         buffer.append("{");
         increaseIndent();
 
-        return new Serializer.Map() {
+        return new Map() {
             private boolean isFirst = true;
 
             @Override
@@ -83,8 +83,8 @@ public class JsonPrettySerializer implements Serializer {
             }
 
             @Override
-            public void serializeValue(Serializable value) {
-                value.serialize(JsonPrettySerializer.this);
+            public void serializeValue(Object value) {
+                SerDe.serialize(JsonPrettySerializer.this, value);
             }
 
             @Override
@@ -101,19 +101,19 @@ public class JsonPrettySerializer implements Serializer {
     }
 
     @Override
-    public Serializer.Seq serializeSeq() {
+    public Seq serializeSeq() {
         buffer.append("[");
         increaseIndent();
 
-        return new Serializer.Seq() {
+        return new Seq() {
             private boolean isFirst = true;
 
             @Override
-            public void serializeValue(Serializable value) {
+            public void serializeValue(Object value) {
                 buffer.append(isFirst ? "\n" : ",\n");
                 isFirst = false;
                 buffer.append(curIndent);
-                value.serialize(JsonPrettySerializer.this);
+                SerDe.serialize(JsonPrettySerializer.this, value);
             }
 
             @Override

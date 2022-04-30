@@ -34,15 +34,14 @@ public class ServerModuleTCP implements ServerModule {
 
     @Override
     public void update(Selector selector) throws IOException {
-        Instant currentTime = Instant.now();
+        var currentTime = Instant.now();
 
-        for (SelectionKey key : selector.keys()) {
-            if (key.attachment() instanceof Client) {
-                Client client = (Client) key.attachment();
-                SocketChannel socket = (SocketChannel) key.channel();
+        for (var key : selector.keys()) {
+            if (key.attachment() instanceof Client client) {
+                var socket = (SocketChannel) key.channel();
                 if (!socket.isOpen()) continue;
 
-                Instant deadline = client.lastActivity.plusMillis(INACTIVITY_TIMEOUT_MS);
+                var deadline = client.lastActivity.plusMillis(INACTIVITY_TIMEOUT_MS);
                 if (currentTime.isAfter(deadline)) {
                     socket.close();
                     logger.info("Closed connection with " + client.address + " due to inactivity");
@@ -62,10 +61,10 @@ public class ServerModuleTCP implements ServerModule {
     private void handleServerKey(SelectionKey key) throws IOException {
         if (!key.isAcceptable()) return;
 
-        SocketChannel clientSocket = serverSocket.accept();
+        var clientSocket = serverSocket.accept();
         if (clientSocket == null) return;
 
-        Client client = new Client();
+        var client = new Client();
         client.address = clientSocket.getRemoteAddress();
         client.lastActivity = Instant.now();
         client.buffer = ByteBuffer.allocate(NetworkCodec.MAX_MESSAGE_SIZE);
@@ -77,10 +76,9 @@ public class ServerModuleTCP implements ServerModule {
     }
 
     private void handleClientKey(SelectionKey key) throws IOException {
-        if (!(key.attachment() instanceof Client)) return;
+        if (!(key.attachment() instanceof Client client)) return;
 
-        Client client = (Client) key.attachment();
-        SocketChannel clientSocket = (SocketChannel) key.channel();
+        var clientSocket = (SocketChannel) key.channel();
 
         try {
             if (key.isReadable())
@@ -96,7 +94,7 @@ public class ServerModuleTCP implements ServerModule {
     }
 
     private void clientRead(Client client, SelectionKey key, SocketChannel clientSocket) throws IOException {
-        int bytesRead = clientSocket.read(client.buffer);
+        var bytesRead = clientSocket.read(client.buffer);
         if (bytesRead == 0) return;
 
         if (bytesRead == -1) {
@@ -124,17 +122,18 @@ public class ServerModuleTCP implements ServerModule {
     private void handleRequest(Client client, SelectionKey key, Request<?> request) throws IOException {
         logger.info("Got request from " + client.address);
 
-        Response<?> response = requestHandler.handle(request);
+        var response = requestHandler.handle(request);
         sendResponse(client, key, response);
     }
 
     private void sendResponse(Client client, SelectionKey key, Response<?> response) throws IOException {
         client.buffer = NetworkCodec.encodeObject(response);
         key.interestOps(SelectionKey.OP_WRITE);
+        clientWrite(client, (SocketChannel) key.channel());
     }
 
     private void clientWrite(Client client, SocketChannel clientSocket) throws IOException {
-        int bytesWrote = clientSocket.write(client.buffer);
+        var bytesWrote = clientSocket.write(client.buffer);
         if (bytesWrote == 0) return;
 
         if (!client.buffer.hasRemaining()) {

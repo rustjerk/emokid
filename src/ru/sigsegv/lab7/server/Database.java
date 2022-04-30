@@ -3,7 +3,6 @@ package ru.sigsegv.lab7.server;
 import ru.sigsegv.lab7.common.model.MusicBand;
 import ru.sigsegv.lab7.common.serde.DeserializeException;
 import ru.sigsegv.lab7.common.serde.Deserializer;
-import ru.sigsegv.lab7.common.serde.Serializer;
 import ru.sigsegv.lab7.common.serde.json.JsonDeserializer;
 import ru.sigsegv.lab7.common.serde.json.JsonPrettySerializer;
 
@@ -58,17 +57,17 @@ public class Database {
      * @throws IOException if there is an error writing to file
      */
     public void save(File file) throws IOException {
-        JsonPrettySerializer serializer = new JsonPrettySerializer();
-        Serializer.Seq map = serializer.serializeSeq();
+        var serializer = new JsonPrettySerializer();
+        var map = serializer.serializeSeq();
 
-        for (MusicBand band : musicBandSet) {
+        for (var band : musicBandSet) {
             map.serializeValue(band);
         }
 
         map.finish();
         serializer.getString();
 
-        BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(file));
+        var stream = new BufferedOutputStream(new FileOutputStream(file));
         stream.write(serializer.getString().getBytes());
         stream.flush();
         stream.close();
@@ -83,17 +82,16 @@ public class Database {
      */
     public void load(File file) throws IOException, DeserializeException {
         Deserializer deserializer = new JsonDeserializer(new Scanner(file));
-        Deserializer.Seq map = deserializer.deserializeSeq();
+        var map = deserializer.deserializeSeq();
 
         Set<Long> ids = new HashSet<>();
 
         musicBandSet.clear();
         while (map.hasNext()) {
-            MusicBand band = new MusicBand();
-            map.nextValue(band);
-            if (ids.contains(band.getId()))
-                throw new DeserializeException(deserializer.formatErrorMessage("ID collision: %d", band.getId()));
-            ids.add(band.getId());
+            var band = map.nextValue(MusicBand.class);
+            if (ids.contains(band.id()))
+                throw new DeserializeException(deserializer.formatErrorMessage("ID collision: %d", band.id()));
+            ids.add(band.id());
             musicBandSet.add(band);
         }
 

@@ -1,4 +1,4 @@
-package ru.sigsegv.lab7.common.util;
+package ru.sigsegv.lab7.common.serde;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

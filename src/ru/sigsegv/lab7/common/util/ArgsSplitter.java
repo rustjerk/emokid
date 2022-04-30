@@ -2,7 +2,6 @@ package ru.sigsegv.lab7.common.util;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -19,9 +18,9 @@ public class ArgsSplitter {
      */
     public static String[] splitArgs(String str) {
         List<String> result = new ArrayList<>();
-        Matcher matcher = PATTERN.matcher(str);
+        var matcher = PATTERN.matcher(str);
         while (matcher.find()) {
-            String arg = matcher.group(1);
+            var arg = matcher.group(1);
             if (arg.startsWith("\"") && arg.endsWith("\"") && arg.length() >= 2) {
                 arg = arg.substring(1, arg.length() - 1);
             }

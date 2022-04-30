@@ -14,7 +14,7 @@ public class ClientTCP extends Client {
 
     @Override
     public <T> Response<T> request(Request<?> request) throws IOException {
-        SocketChannel socket = SocketChannel.open(serverAddress);
+        var socket = SocketChannel.open(serverAddress);
         return requestByChannel(socket, request);
     }
 }

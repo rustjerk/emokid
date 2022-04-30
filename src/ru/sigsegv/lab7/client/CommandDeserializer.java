@@ -1,8 +1,8 @@
 package ru.sigsegv.lab7.client;
 
-import ru.sigsegv.lab7.common.serde.Deserializable;
 import ru.sigsegv.lab7.common.serde.DeserializeException;
 import ru.sigsegv.lab7.common.serde.Deserializer;
+import ru.sigsegv.lab7.common.serde.SerDe;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +26,7 @@ public class CommandDeserializer implements Deserializer {
     @Override
     public boolean deserializeBoolean() throws DeserializeException {
         while (true) {
-            String line = readLine(getFieldPrompt("true/false")).toLowerCase();
+            var line = readLine(getFieldPrompt("true/false")).toLowerCase();
             if (!line.isEmpty()) {
                 if ("true".startsWith(line)) return true;
                 if ("false".startsWith(line)) return false;
@@ -38,7 +38,7 @@ public class CommandDeserializer implements Deserializer {
     @Override
     public long deserializeLong() throws DeserializeException {
         while (true) {
-            String line = readLine(getFieldPrompt("integer"));
+            var line = readLine(getFieldPrompt("integer"));
             try {
                 return Long.parseLong(line);
             } catch (NumberFormatException e) {
@@ -50,7 +50,7 @@ public class CommandDeserializer implements Deserializer {
     @Override
     public double deserializeDouble() throws DeserializeException {
         while (true) {
-            String line = readLine(getFieldPrompt("float"));
+            var line = readLine(getFieldPrompt("float"));
             try {
                 return Double.parseDouble(line);
             } catch (NumberFormatException e) {
@@ -69,7 +69,7 @@ public class CommandDeserializer implements Deserializer {
         return new Deserializer.Map() {
             @Override
             public String nextKey(String keyHint, boolean isRequired) throws DeserializeException {
-                String key = keyHint;
+                var key = keyHint;
 
                 if (key != null && !isRequired) {
                     pushLocation(String.format("if %s is present", keyHint), s -> String.format("if %s.%s is present", s, keyHint));
@@ -90,17 +90,18 @@ public class CommandDeserializer implements Deserializer {
                     popLocation();
                 }
 
-                String fKey = key;
+                var fKey = key;
                 pushLocation(fKey, s -> String.format("%s.%s", s, fKey));
 
                 return fKey.isEmpty() ? null : fKey;
             }
 
             @Override
-            public void nextValue(Deserializable deserializable) throws DeserializeException {
-                deserializable.deserialize(CommandDeserializer.this);
+            public <T> T nextValue(Class<T> type) throws DeserializeException {
+                var value = SerDe.deserialize(CommandDeserializer.this, type);
                 setHelp(null);
                 popLocation();
+                return value;
             }
 
             @Override
@@ -116,7 +117,7 @@ public class CommandDeserializer implements Deserializer {
 
     @Override
     public String formatErrorMessage(String fmt, Object... args) {
-        String postfix = String.format(fmt, args);
+        var postfix = String.format(fmt, args);
         return getLocation() == null ? postfix : String.format("%s: %s", getLocation(), postfix);
     }
 
@@ -155,7 +156,7 @@ public class CommandDeserializer implements Deserializer {
 
     private String readLine(String prompt) throws DeserializeException {
         try {
-            String line = ctx.readLine(prompt);
+            var line = ctx.readLine(prompt);
             if (line == null) throw new DeserializeException("unexpected end of input");
             return line;
         } catch (Exception e) {

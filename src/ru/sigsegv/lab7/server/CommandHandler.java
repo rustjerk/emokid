@@ -13,9 +13,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -32,7 +33,7 @@ public class CommandHandler implements RequestHandler {
 
     @Handler(Command.ADD)
     private Response<?> commandAdd(MusicBand band) {
-        band.setId(IdGenerator.generateId());
+        band = band.withId(IdGenerator.generateId());
         database.getMusicBandSet().add(band);
         return Response.success();
     }
@@ -40,7 +41,7 @@ public class CommandHandler implements RequestHandler {
     @Handler(Command.ADD_IF_MAX)
     private Response<?> commandAddIfMax(MusicBand band) {
         Set<MusicBand> set = database.getMusicBandSet();
-        MusicBand max = set.stream().max(Comparator.naturalOrder()).orElse(band);
+        var max = set.stream().max(Comparator.naturalOrder()).orElse(band);
         if (max.compareTo(band) <= 0) {
             set.add(band);
         }
@@ -57,25 +58,24 @@ public class CommandHandler implements RequestHandler {
     @Handler(Command.COUNT_GREATER_THAN_STUDIO)
     private Response<?> commandCountGreaterThanStudio(Studio studio) {
         Set<MusicBand> set = database.getMusicBandSet();
-        long count = set.stream().filter(b -> b.getStudio() != null && b.getStudio().compareTo(studio) > 0).count();
+        var count = set.stream().filter(b -> b.studio() != null && b.studio().compareTo(studio) > 0).count();
         return Response.success(count);
     }
 
     @Handler(Command.INFO)
     private Response<?> commandInfo() {
-        DatabaseInfo info = new DatabaseInfo();
-        info.type = database.getType();
-        info.size = database.getMusicBandSet().size();
-        info.initializationTime = database.getInitializationTime();
+        var info = new DatabaseInfo(database.getType(),
+                database.getMusicBandSet().size(),
+                database.getInitializationTime());
         return Response.success(info);
     }
 
     @Handler(Command.MIN_BY_STUDIO)
     private Response<?> commandMinByStudio() {
         Set<MusicBand> set = database.getMusicBandSet();
-        MusicBand band = set.stream()
-                .filter(b -> b.getStudio() != null)
-                .min(Comparator.comparing(MusicBand::getStudio))
+        var band = set.stream()
+                .filter(b -> b.studio() != null)
+                .min(Comparator.comparing(MusicBand::studio))
                 .orElse(null);
         return Response.success(band);
     }
@@ -83,8 +83,8 @@ public class CommandHandler implements RequestHandler {
     @Handler(Command.PRINT_FIELD_ASCENDING_STUDIO)
     private Response<?> commandPrintFieldAscendingStudio() {
         Set<MusicBand> set = database.getMusicBandSet();
-        List<Studio> studios = set.stream()
-                .map(MusicBand::getStudio)
+        var studios = set.stream()
+                .map(MusicBand::studio)
                 .filter(Objects::nonNull)
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toList());
@@ -94,7 +94,7 @@ public class CommandHandler implements RequestHandler {
     @Handler(Command.REMOVE_BY_ID)
     private Response<?> commandRemoveById(Long id) {
         Set<MusicBand> set = database.getMusicBandSet();
-        return Response.success(set.removeIf(b -> b.getId() == id));
+        return Response.success(set.removeIf(b -> b.id() == id));
     }
 
     @Handler(Command.REMOVE_GREATER)
@@ -113,14 +113,14 @@ public class CommandHandler implements RequestHandler {
 
     @Handler(Command.SHOW)
     private Response<?> commandShow() {
-        List<MusicBand> bands = database.getMusicBandSet().stream().sorted().collect(Collectors.toList());
+        var bands = database.getMusicBandSet().stream().sorted().collect(Collectors.toList());
         return Response.success(bands);
     }
 
     @Handler(Command.UPDATE)
     private Response<?> commandUpdate(MusicBand band) {
         Set<MusicBand> set = database.getMusicBandSet();
-        if (!set.removeIf(b -> b.getId() == band.getId()))
+        if (!set.removeIf(b -> b.id() == band.id()))
             return Response.success(false);
         set.add(band);
         return Response.success(true);
@@ -132,17 +132,17 @@ public class CommandHandler implements RequestHandler {
         if (request.getArgument() != null)
             logger.info(request.getArgument().toString());
 
-        RequestHandler handler = commands.get(request.getCommand());
+        var handler = commands.get(request.getCommand());
         if (handler == null)
             return Response.invalidRequest();
         return handler.handle(request);
     }
 
     private HashMap<Command, RequestHandler> gatherCommands() {
-        HashMap<Command, RequestHandler> commandMethods = new HashMap<>();
+        var commandMethods = new HashMap<Command, RequestHandler>();
 
-        for (Method method : getClass().getDeclaredMethods()) {
-            Handler annotation = method.getAnnotation(Handler.class);
+        for (var method : getClass().getDeclaredMethods()) {
+            var annotation = method.getAnnotation(Handler.class);
             if (annotation == null) continue;
 
             RequestHandler handler;
@@ -159,9 +159,9 @@ public class CommandHandler implements RequestHandler {
                     }
                 };
                 case 1 -> {
-                    Parameter parameter = method.getParameters()[0];
+                    var parameter = method.getParameters()[0];
                     handler = request -> {
-                        Object argument = request.getArgument();
+                        var argument = request.getArgument();
                         if (argument != null) {
                             if (!parameter.getType().isAssignableFrom(argument.getClass())) {
                                 return Response.invalidRequest();

@@ -13,7 +13,7 @@ public class ScriptCommandContext extends CommandContext {
     @Override
     public String readLine(String prompt) {
         try {
-            String line = scanner.nextLine();
+            var line = scanner.nextLine();
             if (line != null && !line.trim().isEmpty()) {
                 println("# " + prompt + line);
             }

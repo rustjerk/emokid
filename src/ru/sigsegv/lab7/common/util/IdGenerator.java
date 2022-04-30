@@ -10,9 +10,9 @@ public class IdGenerator {
      * @return unique id
      */
     public static long generateId() {
-        long a = System.currentTimeMillis() * 0xFFFF;
-        long b = System.nanoTime() & 0xFF * 0xFF;
-        long c = (long) (Math.random() * 0xFF);
+        var a = System.currentTimeMillis() * 0xFFFF;
+        var b = System.nanoTime() & 0xFF * 0xFF;
+        var c = (long) (Math.random() * 0xFF);
         return a | b | c;
     }
 }

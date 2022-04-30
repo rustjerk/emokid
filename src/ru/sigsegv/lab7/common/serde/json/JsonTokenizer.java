@@ -35,7 +35,7 @@ public class JsonTokenizer {
     public JsonToken nextToken() throws DeserializeException {
         if (scanner.hasNext(WHITESPACE))
             scanner.skip(WHITESPACE);
-        String match = scanner.findWithinHorizon(TOKEN_PATTERN, 0);
+        var match = scanner.findWithinHorizon(TOKEN_PATTERN, 0);
 
         if (match == null && scanner.hasNext())
             throw new DeserializeException("syntax error: trailing characters");
@@ -92,20 +92,21 @@ public class JsonTokenizer {
 
     private static String unescapeString(String input) throws DeserializeException {
         input = input.substring(1, input.length() - 1);
-        StringBuilder result = new StringBuilder(input.length());
+        var result = new StringBuilder(input.length());
 
-        boolean isEscaped = false;
-        int unicodeLen = -1;
+        var isEscaped = false;
+        var unicodeLen = -1;
         char unicodeChar = 0;
 
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
+        for (var i = 0; i < input.length(); i++) {
+            var c = input.charAt(i);
             if (c == '\\') {
                 isEscaped = true;
                 continue;
             }
 
             if (isEscaped && unicodeLen == -1) {
+                // Do nothing
                 switch (c) {
                     case 'b' -> c = '\b';
                     case 'f' -> c = '\f';
@@ -119,10 +120,9 @@ public class JsonTokenizer {
                     }
                     default -> {
                     }
-                    // Do nothing
                 }
             } else if (unicodeLen >= 0) {
-                int digit = Character.digit(c, 16);
+                var digit = Character.digit(c, 16);
                 if (digit < 0)
                     throw new DeserializeException("invalid unicode escape");
 

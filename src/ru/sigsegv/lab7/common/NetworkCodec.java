@@ -11,7 +11,7 @@ public class NetworkCodec {
     public static ByteBuffer encodeObject(Object object) throws IOException {
         synchronized (cachedBAOS) {
             cachedBAOS.reset();
-            ObjectOutputStream stream = new ObjectOutputStream(cachedBAOS);
+            var stream = new ObjectOutputStream(cachedBAOS);
             stream.writeObject(object);
             if (cachedBAOS.size() > MAX_MESSAGE_SIZE)
                 throw new IOException("message to long");
@@ -20,10 +20,10 @@ public class NetworkCodec {
     }
 
     public static Object decodeObject(ByteBuffer sourceBuffer) throws IOException {
-        int offset = sourceBuffer.arrayOffset();
-        int length = sourceBuffer.position();
-        ByteArrayInputStream rawInput = new ByteArrayInputStream(sourceBuffer.array(), offset, length);
-        ObjectInputStream input = new ObjectInputStream(rawInput);
+        var offset = sourceBuffer.arrayOffset();
+        var length = sourceBuffer.position();
+        var rawInput = new ByteArrayInputStream(sourceBuffer.array(), offset, length);
+        var input = new ObjectInputStream(rawInput);
 
         try {
             return input.readObject();

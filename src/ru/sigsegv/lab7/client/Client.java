@@ -39,19 +39,20 @@ public abstract class Client {
 
     protected void waitUntilSelected(Instant deadline, BooleanSupplier cond) throws IOException {
         while (Instant.now().isBefore(deadline) && !cond.getAsBoolean()) {
-            long timeout = Math.max(Duration.between(Instant.now(), deadline).dividedBy(2).toMillis(), 1);
+            var timeout = Math.max(Duration.between(Instant.now(), deadline).dividedBy(2).toMillis(), 1);
             selector.select(timeout);
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected <T extends SelectableChannel & ReadableByteChannel & WritableByteChannel, R>
     Response<R> requestByChannel(T channel, Request<?> request) throws IOException {
-        Instant deadline = Instant.now().plusMillis(TIMEOUT_MS);
+        var deadline = Instant.now().plusMillis(TIMEOUT_MS);
 
-        ByteBuffer requestBuffer = NetworkCodec.encodeObject(request);
+        var requestBuffer = NetworkCodec.encodeObject(request);
 
         channel.configureBlocking(false);
-        SelectionKey key = channel.register(selector, SelectionKey.OP_WRITE);
+        var key = channel.register(selector, SelectionKey.OP_WRITE);
 
         while (deadline.isAfter(Instant.now()) && requestBuffer.hasRemaining()) {
             waitUntilSelected(deadline, key::isWritable);
@@ -66,11 +67,11 @@ public abstract class Client {
 
         while (deadline.isAfter(Instant.now())) {
             waitUntilSelected(deadline, key::isReadable);
-            int numRead = channel.read(buffer);
+            var numRead = channel.read(buffer);
             if (numRead == 0) continue;
             if (numRead == -1) throw new EOFException("reached EOF while receiving response");
 
-            Object response = NetworkCodec.decodeObject(buffer);
+            var response = NetworkCodec.decodeObject(buffer);
             if (response != null) {
                 if (!(response instanceof Response<?>))
                     throw new IOException("invalid response");

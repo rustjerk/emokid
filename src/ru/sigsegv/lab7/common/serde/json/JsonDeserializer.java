@@ -1,8 +1,8 @@
 package ru.sigsegv.lab7.common.serde.json;
 
-import ru.sigsegv.lab7.common.serde.Deserializable;
 import ru.sigsegv.lab7.common.serde.DeserializeException;
 import ru.sigsegv.lab7.common.serde.Deserializer;
+import ru.sigsegv.lab7.common.serde.SerDe;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,10 +53,10 @@ public class JsonDeserializer implements Deserializer {
     }
 
     @Override
-    public Deserializer.Map deserializeMap() throws DeserializeException {
+    public Map deserializeMap() throws DeserializeException {
         expect(JsonToken.L_BRACE, "`{` expected");
 
-        return new Deserializer.Map() {
+        return new Map() {
             private boolean isFirst = true;
 
             @Override
@@ -69,16 +69,18 @@ public class JsonDeserializer implements Deserializer {
                 expect(JsonToken.STRING, "string expected");
                 isFirst = false;
 
-                String key = tokenizer.getString();
+                var key = tokenizer.getString();
                 pushLocation(key, s -> String.format("%s.%s", s, key));
                 return key;
             }
 
             @Override
-            public void nextValue(Deserializable deserializable) throws DeserializeException {
+            public <T> T nextValue(Class<T> type) throws DeserializeException {
                 expect(JsonToken.COLON, "`:` expected");
-                deserializable.deserialize(JsonDeserializer.this);
+                var value = SerDe.deserialize(JsonDeserializer.this, type);
                 popLocation();
+
+                return value;
             }
 
             @Override
@@ -89,10 +91,10 @@ public class JsonDeserializer implements Deserializer {
     }
 
     @Override
-    public Deserializer.Seq deserializeSeq() throws DeserializeException {
+    public Seq deserializeSeq() throws DeserializeException {
         expect(JsonToken.L_BRACKET, "`[` expected");
 
-        return new Deserializer.Seq() {
+        return new Seq() {
             private int index = 0;
 
             @Override
@@ -101,13 +103,16 @@ public class JsonDeserializer implements Deserializer {
             }
 
             @Override
-            public void nextValue(Deserializable deserializable) throws DeserializeException {
+            public <T> T nextValue(Class<T> type) throws DeserializeException {
                 if (index > 0) expect(JsonToken.COMMA, "`,` expected");
-                String iStr = String.format("[%d]", index);
+
+                var iStr = String.format("[%d]", index);
                 pushLocation(iStr, s -> s + iStr);
-                deserializable.deserialize(JsonDeserializer.this);
+                var value = SerDe.deserialize(JsonDeserializer.this, type);
                 popLocation();
                 index += 1;
+
+                return value;
             }
 
             @Override
@@ -119,7 +124,7 @@ public class JsonDeserializer implements Deserializer {
 
     @Override
     public String formatErrorMessage(String fmt, Object... args) {
-        String postfix = String.format(fmt, args);
+        var postfix = String.format(fmt, args);
         return getLocation() == null ? postfix : String.format("%s: %s", getLocation(), postfix);
     }
 
@@ -141,7 +146,7 @@ public class JsonDeserializer implements Deserializer {
     }
 
     private void expect(JsonToken expected, String message) throws DeserializeException {
-        JsonToken tok = next();
+        var tok = next();
         if (tok != expected)
             throw new DeserializeException(formatErrorMessage(message));
     }
@@ -156,7 +161,7 @@ public class JsonDeserializer implements Deserializer {
         if (savedToken == null) {
             return tokenizer.nextToken();
         } else {
-            JsonToken token = savedToken;
+            var token = savedToken;
             savedToken = null;
             return token;
         }

@@ -35,7 +35,7 @@ public class ServerModuleUDP implements ServerModule {
     }
 
     @Override
-    public void update(Selector selector) throws IOException {
+    public void update(Selector selector) {
     }
 
     @Override
@@ -50,11 +50,11 @@ public class ServerModuleUDP implements ServerModule {
 
     private void read() throws IOException {
         buffer.clear();
-        SocketAddress clientAddress = channel.receive(buffer);
+        var clientAddress = channel.receive(buffer);
         if (clientAddress == null) return;
 
         try {
-            Object request = NetworkCodec.decodeObject(buffer);
+            var request = NetworkCodec.decodeObject(buffer);
             if (request instanceof Request<?>) {
                 handleRequest(clientAddress, (Request<?>) request);
             } else {
@@ -70,12 +70,12 @@ public class ServerModuleUDP implements ServerModule {
         logger.info(request.toString());
         logger.info("Got request from " + clientAddress);
 
-        Response<?> response = requestHandler.handle(request);
+        var response = requestHandler.handle(request);
         sendResponse(clientAddress, response);
     }
 
     private void sendResponse(SocketAddress clientAddress, Response<?> response) throws IOException {
-        ByteBuffer responseBuffer = NetworkCodec.encodeObject(response);
+        var responseBuffer = NetworkCodec.encodeObject(response);
 
         writeQueueAddresses.add(clientAddress);
         writeQueueBuffers.add(responseBuffer);
@@ -87,10 +87,10 @@ public class ServerModuleUDP implements ServerModule {
 
     private void write() throws IOException {
         while (!writeQueueAddresses.isEmpty()) {
-            SocketAddress clientAddress = writeQueueAddresses.peek();
-            ByteBuffer responseBuffer = writeQueueBuffers.peek();
+            var clientAddress = writeQueueAddresses.peek();
+            var responseBuffer = writeQueueBuffers.peek();
 
-            int numSent = channel.send(responseBuffer, clientAddress);
+            var numSent = channel.send(responseBuffer, clientAddress);
             if (numSent == 0) return;
 
             logger.info("Sent response to " + clientAddress);

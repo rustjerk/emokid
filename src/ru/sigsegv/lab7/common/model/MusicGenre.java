@@ -1,7 +1,6 @@
 package ru.sigsegv.lab7.common.model;
 
-import ru.sigsegv.lab7.common.serde.Serializable;
-import ru.sigsegv.lab7.common.serde.Serializer;
+import java.io.Serializable;
 
 /**
  * Enumeration of known music genres
@@ -20,23 +19,5 @@ public enum MusicGenre implements Serializable {
     @Override
     public String toString() {
         return name;
-    }
-
-    /**
-     * Tries to interpret a string as a music genre
-     *
-     * @param str input string
-     * @return corresponding enum constant, or null if there is no such music genre
-     */
-    public static MusicGenre fromString(String str) {
-        for (MusicGenre genre : values())
-            if (genre.name.equalsIgnoreCase(str))
-                return genre;
-        return null;
-    }
-
-    @Override
-    public void serialize(Serializer serializer) {
-        serializer.serializeString(toString());
     }
 }

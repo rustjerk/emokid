@@ -14,16 +14,16 @@ public class ServerApp {
             return;
         }
 
-        int port = Integer.parseInt(args[0]);
+        var port = Integer.parseInt(args[0]);
 
-        File databasePath = getDatabasePath();
-        Database database = loadDatabase(databasePath);
+        var databasePath = getDatabasePath();
+        var database = loadDatabase(databasePath);
         setupSaveHandler(database, databasePath);
         setupShutdownHandler(database, databasePath);
 
-        CommandHandler handler = new CommandHandler(database);
+        var handler = new CommandHandler(database);
         SocketAddress address = new InetSocketAddress(port);
-        Server server = new Server(address, handler);
+        var server = new Server(address, handler);
 
         while (true) {
             server.tick(100);
@@ -31,12 +31,12 @@ public class ServerApp {
     }
 
     private static File getDatabasePath() {
-        String savePath = System.getenv("FILE");
+        var savePath = System.getenv("FILE");
         return new File(savePath == null ? "save.json" : savePath);
     }
 
     private static Database loadDatabase(File databasePath) {
-        Database database = new Database();
+        var database = new Database();
 
         try {
             database.load(databasePath);

@@ -2,7 +2,6 @@ package ru.sigsegv.lab7.server;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 
 public class Server {
@@ -21,13 +20,13 @@ public class Server {
     public void tick(int timeoutMs) throws IOException {
         selector.select(timeoutMs);
 
-        for (SelectionKey key : selector.selectedKeys()) {
-            for (ServerModule module : modules) {
+        for (var key : selector.selectedKeys()) {
+            for (var module : modules) {
                 module.handleSelectedKey(key);
             }
         }
 
-        for (ServerModule module : modules) {
+        for (var module : modules) {
             module.update(selector);
         }
     }

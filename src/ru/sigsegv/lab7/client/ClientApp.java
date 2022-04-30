@@ -11,8 +11,8 @@ public class ClientApp {
             return;
         }
 
-        String hostname = args[0];
-        int port = Integer.parseInt(args[1]);
+        var hostname = args[0];
+        var port = Integer.parseInt(args[1]);
         SocketAddress serverAddress = new InetSocketAddress(hostname, port);
 
         (new CommandHandler(serverAddress)).runREPL();

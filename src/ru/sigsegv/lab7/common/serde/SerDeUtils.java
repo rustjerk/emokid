@@ -33,7 +33,7 @@ public class SerDeUtils {
      */
     public static <T> Constructor<T> getPublicCtor(Class<T> clazz) {
         try {
-            Constructor<T> ctor = clazz.getConstructor();
+            var ctor = clazz.getConstructor();
             if (!Modifier.isPublic(ctor.getModifiers()))
                 return null;
             return ctor;
@@ -52,7 +52,7 @@ public class SerDeUtils {
      * @return method, or null if it doesn't exist
      */
     public static Method getPublicMethod(Class<?> clazz, String name, Class<?>... args) {
-        for (int i = 0; i < args.length; i++) {
+        for (var i = 0; i < args.length; i++) {
             if (args[i].equals(Boolean.class)) args[i] = boolean.class;
             if (args[i].equals(Byte.class)) args[i] = byte.class;
             if (args[i].equals(Short.class)) args[i] = short.class;
@@ -63,7 +63,7 @@ public class SerDeUtils {
         }
 
         try {
-            Method method = clazz.getDeclaredMethod(name, args);
+            var method = clazz.getDeclaredMethod(name, args);
             if (!Modifier.isPublic(method.getModifiers()))
                 return null;
             return method;

@@ -14,7 +14,7 @@ public class ClientUDP extends Client {
 
     @Override
     public <T> Response<T> request(Request<?> request) throws IOException {
-        DatagramChannel socket = DatagramChannel.open().connect(serverAddress);
+        var socket = DatagramChannel.open().connect(serverAddress);
         return requestByChannel(socket, request);
     }
 }

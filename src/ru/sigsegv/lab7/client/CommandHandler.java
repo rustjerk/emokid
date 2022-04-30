@@ -6,6 +6,7 @@ import ru.sigsegv.lab7.common.model.DatabaseInfo;
 import ru.sigsegv.lab7.common.model.MusicBand;
 import ru.sigsegv.lab7.common.model.Studio;
 import ru.sigsegv.lab7.common.serde.DeserializeException;
+import ru.sigsegv.lab7.common.serde.SerDe;
 import ru.sigsegv.lab7.common.util.ArgsSplitter;
 
 import java.io.File;
@@ -16,7 +17,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,7 +47,7 @@ public class CommandHandler {
     @Handler(command = "add",
             description = "Adds a single music band to the collection.")
     private void commandAdd(String[] args) throws IOException {
-        MusicBand band = enterMusicBand();
+        var band = enterMusicBand();
         if (band == null) return;
 
         printResponse(client.request(Command.ADD, band));
@@ -56,7 +56,7 @@ public class CommandHandler {
     @Handler(command = "add_if_max",
             description = "Adds a single music band to the collection, if it's greater than all the other bands.")
     private void commandAddIfMax(String[] args) throws IOException {
-        MusicBand band = enterMusicBand();
+        var band = enterMusicBand();
         if (band == null) return;
 
         printResponse(client.request(Command.ADD_IF_MAX, band));
@@ -71,10 +71,10 @@ public class CommandHandler {
     @Handler(command = "count_greater_than_studio",
             description = "Counts music bands with studio greater than the given one.")
     private void commandCountGreaterThanStudio(String[] args) throws IOException {
-        Studio studio = new Studio();
+        Studio studio;
 
         try {
-            studio.deserialize(new CommandDeserializer(ctx));
+            studio = SerDe.deserialize(new CommandDeserializer(ctx), Studio.class);
         } catch (DeserializeException e) {
             ctx.printf("Erroneous input: %s%n", e.getMessage());
             return;
@@ -92,9 +92,9 @@ public class CommandHandler {
             helpMessage = "Executes a script.\nSyntax: execute_script <path>")
     private void commandExecuteScript(String[] args) {
         try {
-            Scanner scanner = new Scanner(new File(args[1]));
+            var scanner = new Scanner(new File(args[1]));
             CommandContext newCtx = new ScriptCommandContext(scanner);
-            CommandContext oldCtx = ctx;
+            var oldCtx = ctx;
             ctx = newCtx;
 
             try {
@@ -120,16 +120,16 @@ public class CommandHandler {
     private void commandHelp(String[] args) {
         if (args.length < 2) {
             ctx.println("Available commands: ");
-            List<String> commandNames = commands.keySet().stream().sorted().collect(Collectors.toList());
-            int maxLength = commands.keySet().stream().mapToInt(String::length).max().orElse(0);
+            var commandNames = commands.keySet().stream().sorted().collect(Collectors.toList());
+            var maxLength = commands.keySet().stream().mapToInt(String::length).max().orElse(0);
 
-            for (String commandName : commandNames) {
-                CommandEntry command = commands.get(commandName);
-                String padding = String.join("", Collections.nCopies(maxLength - commandName.length(), " "));
+            for (var commandName : commandNames) {
+                var command = commands.get(commandName);
+                var padding = String.join("", Collections.nCopies(maxLength - commandName.length(), " "));
                 ctx.printf("%s:%s %s%n", commandName, padding, command.getDescription());
             }
         } else {
-            CommandEntry cmd = commands.get(args[1]);
+            var cmd = commands.get(args[1]);
             if (cmd == null) {
                 ctx.printf("No such command: " + args[1]);
                 return;
@@ -146,10 +146,10 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        DatabaseInfo info = response.getPayload();
-        ctx.println("Collection type: " + info.type);
-        ctx.println("Collection size: " + info.size);
-        ctx.println("Initialized at " + info.initializationTime.format(ISO_LOCAL_DATE_TIME));
+        var info = response.getPayload();
+        ctx.println("Collection type: " + info.type());
+        ctx.println("Collection size: " + info.size());
+        ctx.println("Initialized at " + info.initializationTime().format(ISO_LOCAL_DATE_TIME));
     }
 
     @Handler(command = "min_by_studio",
@@ -173,7 +173,7 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        for (Studio studio : response.getPayload()) {
+        for (var studio : response.getPayload()) {
             ctx.println(studio.toString());
         }
     }
@@ -196,7 +196,7 @@ public class CommandHandler {
             description = "Removes a music band by id.",
             helpMessage = "Removes a music band by id.\nSyntax: remove_by_id <id>")
     private void commandRemoveById(String[] args) throws IOException {
-        Long id = parseLongArg(args, 1);
+        var id = parseLongArg(args, 1);
         if (id == null) return;
 
         Response<Boolean> response = client.request(Command.REMOVE_BY_ID, id);
@@ -210,7 +210,7 @@ public class CommandHandler {
     @Handler(command = "remove_greater",
             description = "Removes music bands greater than the given one.")
     private void commandRemoveGreater(String[] args) throws IOException {
-        MusicBand band = enterMusicBand();
+        var band = enterMusicBand();
         if (band == null) return;
 
         Response<Boolean> response = client.request(Command.REMOVE_GREATER, band);
@@ -220,7 +220,7 @@ public class CommandHandler {
     @Handler(command = "remove_lower",
             description = "Removes music bands lower than the given one.")
     private void commandRemoveLower(String[] args) throws IOException {
-        MusicBand band = enterMusicBand();
+        var band = enterMusicBand();
         if (band == null) return;
 
         Response<Boolean> response = client.request(Command.REMOVE_LOWER, band);
@@ -234,7 +234,7 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        for (MusicBand band : response.getPayload()) {
+        for (var band : response.getPayload()) {
             ctx.println(band.toString());
         }
     }
@@ -243,13 +243,12 @@ public class CommandHandler {
             description = "Updates a music band by id.",
             helpMessage = "Updates a music band by id.\nSyntax: update <id>")
     private void commandUpdate(String[] args) throws IOException {
-        Long id = parseLongArg(args, 1);
+        var id = parseLongArg(args, 1);
         if (id == null) return;
 
-        MusicBand band = enterMusicBand();
+        var band = enterMusicBand();
         if (band == null) return;
-
-        band.setId(id);
+        band = band.withId(id);
 
         Response<Boolean> response = client.request(Command.UPDATE, band);
         printResponse(response);
@@ -281,9 +280,7 @@ public class CommandHandler {
      */
     public MusicBand enterMusicBand() {
         try {
-            MusicBand band = new MusicBand();
-            band.deserialize(new CommandDeserializer(ctx));
-            return band;
+            return SerDe.deserialize(new CommandDeserializer(ctx), MusicBand.class);
         } catch (DeserializeException e) {
             ctx.printf("Erroneous input: %s%n", e.getMessage());
             return null;
@@ -298,7 +295,7 @@ public class CommandHandler {
 
     public void runREPL() {
         while (ctx.isRunning()) {
-            String line = ctx.readLine("> ");
+            var line = ctx.readLine("> ");
             if (line == null) break;
 
             executeLine(line);
@@ -306,7 +303,7 @@ public class CommandHandler {
     }
 
     private void executeLine(String line) {
-        String[] args = ArgsSplitter.splitArgs(line);
+        var args = ArgsSplitter.splitArgs(line);
         if (args.length == 0)
             return;
 
@@ -314,7 +311,7 @@ public class CommandHandler {
     }
 
     private void executeCommand(String[] args) {
-        CommandEntry command = commands.get(args[0]);
+        var command = commands.get(args[0]);
         if (command == null) {
             ctx.println("No such command: " + args[0]);
             return;
@@ -324,14 +321,15 @@ public class CommandHandler {
             command.execute(args);
         } catch (Exception e) {
             ctx.println("Error: " + getRootExceptionMessage(e));
+            e.printStackTrace();
         }
     }
 
     private HashMap<String, CommandEntry> gatherCommands() {
-        HashMap<String, CommandEntry> commandMethods = new HashMap<>();
+        var commandMethods = new HashMap<String, CommandEntry>();
 
-        for (Method method : getClass().getDeclaredMethods()) {
-            Handler annotation = method.getAnnotation(Handler.class);
+        for (var method : getClass().getDeclaredMethods()) {
+            var annotation = method.getAnnotation(Handler.class);
             if (annotation == null) continue;
 
             if (method.getParameterCount() != 1 ||
@@ -339,7 +337,7 @@ public class CommandHandler {
                 throw new RuntimeException("Command handler should receive one String[] args argument.");
             }
 
-            CommandEntry handler = new CommandEntry() {
+            var handler = new CommandEntry() {
                 @Override
                 public void execute(String[] args) {
                     try {
@@ -357,7 +355,7 @@ public class CommandHandler {
 
                 @Override
                 public String getHelpMessage() {
-                    String helpMessage = annotation.helpMessage();
+                    var helpMessage = annotation.helpMessage();
                     if (helpMessage.isEmpty())
                         return getDescription();
                     return helpMessage;
@@ -371,11 +369,11 @@ public class CommandHandler {
     }
 
     private static String getRootExceptionMessage(Throwable e) {
-        Throwable cause = Stream.iterate(e, Throwable::getCause)
+        var cause = Stream.iterate(e, Throwable::getCause)
                 .filter(element -> element.getCause() == null)
                 .findFirst()
                 .orElse(e);
-        String message = cause.getMessage();
+        var message = cause.getMessage();
         return message == null ? cause.toString() : message;
     }
 
