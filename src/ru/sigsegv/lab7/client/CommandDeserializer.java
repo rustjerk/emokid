@@ -97,11 +97,17 @@ public class CommandDeserializer implements Deserializer {
             }
 
             @Override
-            public <T> T nextValue(Class<T> type) throws DeserializeException {
-                var value = SerDe.deserialize(CommandDeserializer.this, type);
-                setHelp(null);
-                popLocation();
-                return value;
+            public <T> T nextValue(Class<T> type) {
+                while (true) {
+                    try {
+                        var value = SerDe.deserialize(CommandDeserializer.this, type);
+                        setHelp(null);
+                        popLocation();
+                        return value;
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                }
             }
 
             @Override

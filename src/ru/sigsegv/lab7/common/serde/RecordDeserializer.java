@@ -11,6 +11,7 @@ public class RecordDeserializer<T extends Record> implements TypeDeserializer<T>
 
     private final Map<String, FieldEntry> fields = new LinkedHashMap<>();
 
+    @SuppressWarnings("unchecked")
     public RecordDeserializer(Class<T> type) {
         constructor = getCanonicalConstructor(type);
 
@@ -18,10 +19,21 @@ public class RecordDeserializer<T extends Record> implements TypeDeserializer<T>
         for (var field : type.getRecordComponents()) {
             var isRequired = field.getAnnotation(Nullable.class) == null;
 
-            var ann = field.getAnnotation(SkipDeserialization.class);
-            var skipDeserializer = ann == null ? null : ann.deserializer();
+            var annD = field.getAnnotation(SkipDeserialization.class);
+            var skipDeserializer = annD == null ? null : annD.deserializer();
 
-            var entry = new FieldEntry(index, field.getType(), isRequired, skipDeserializer);
+            var annV = field.getAnnotation(Validate.class);
+
+            Validator<Object> validator = null;
+            if (annV != null) {
+                try {
+                    validator = (Validator<Object>) annV.value().getConstructor().newInstance();
+                } catch (ReflectiveOperationException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            var entry = new FieldEntry(index, field.getType(), isRequired, skipDeserializer, validator);
             fields.put(field.getName(), entry);
             index += 1;
         }
@@ -73,7 +85,9 @@ public class RecordDeserializer<T extends Record> implements TypeDeserializer<T>
             if (actualField == null)
                 throw new DeserializeException(deserializer.formatErrorMessage("unexpected field `%s`", actualKey));
 
-            values[actualField.index] = map.nextValue(actualField.type);
+            var value = map.nextValue(actualField.type);
+            if (actualField.validator != null) actualField.validator.validate(value);
+            values[actualField.index] = value;
         }
 
         map.finish();
@@ -98,6 +112,7 @@ public class RecordDeserializer<T extends Record> implements TypeDeserializer<T>
     }
 
     private record FieldEntry(int index, Class<?> type, boolean isRequired,
-                              Class<? extends Deserializer> skipDeserializer) {
+                              Class<? extends Deserializer> skipDeserializer,
+                              Validator<Object> validator) {
     }
 }
