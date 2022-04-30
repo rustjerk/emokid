@@ -1,6 +1,7 @@
 package ru.sigsegv.lab7.common.model;
 
 import ru.sigsegv.lab7.client.CommandDeserializer;
+import ru.sigsegv.lab7.common.serde.Nullable;
 import ru.sigsegv.lab7.common.serde.SkipDeserialization;
 
 import java.io.Serializable;
@@ -17,7 +18,9 @@ public record MusicBand(@SkipDeserialization(deserializer = CommandDeserializer.
                         ZonedDateTime creationDate,
                         int numberOfParticipants,
                         String description,
+                        @Nullable
                         MusicGenre genre,
+                        @Nullable
                         Studio studio) implements Comparable<MusicBand>, Serializable {
 
     public MusicBand withId(long id) {

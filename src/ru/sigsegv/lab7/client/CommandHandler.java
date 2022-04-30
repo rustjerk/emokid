@@ -321,7 +321,7 @@ public class CommandHandler {
             command.execute(args);
         } catch (Exception e) {
             ctx.println("Error: " + getRootExceptionMessage(e));
-            e.printStackTrace();
+//            e.printStackTrace();
         }
     }
 
