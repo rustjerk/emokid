@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -120,7 +119,7 @@ public class CommandHandler {
     private void commandHelp(String[] args) {
         if (args.length < 2) {
             ctx.println("Available commands: ");
-            var commandNames = commands.keySet().stream().sorted().collect(Collectors.toList());
+            var commandNames = commands.keySet().stream().sorted().toList();
             var maxLength = commands.keySet().stream().mapToInt(String::length).max().orElse(0);
 
             for (var commandName : commandNames) {

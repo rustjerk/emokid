@@ -16,9 +16,9 @@ import java.time.Instant;
 import java.util.function.BooleanSupplier;
 
 public abstract class Client {
-    protected final static int TIMEOUT_MS = 2000;
+    protected final static int TIMEOUT_MS = 10000;
 
-    protected final Selector selector;
+    protected Selector selector;
     protected final SocketAddress serverAddress;
     protected final ByteBuffer buffer = ByteBuffer.allocate(NetworkCodec.MAX_MESSAGE_SIZE);
 
@@ -44,29 +44,33 @@ public abstract class Client {
         }
     }
 
+    private static final boolean IS_NIO_BROKEN = System.getProperty("os.name").toLowerCase().contains("win");
+
     @SuppressWarnings("unchecked")
     protected <T extends SelectableChannel & ReadableByteChannel & WritableByteChannel, R>
     Response<R> requestByChannel(T channel, Request<?> request) throws IOException {
-        var deadline = Instant.now().plusMillis(TIMEOUT_MS);
+        channel.configureBlocking(IS_NIO_BROKEN);
 
+        var deadline = Instant.now().plusMillis(TIMEOUT_MS);
         var requestBuffer = NetworkCodec.encodeObject(request);
 
-        channel.configureBlocking(false);
-        var key = channel.register(selector, SelectionKey.OP_WRITE);
+        SelectionKey key = null;
+        if (!IS_NIO_BROKEN) key = channel.register(selector, SelectionKey.OP_WRITE);
 
         while (deadline.isAfter(Instant.now()) && requestBuffer.hasRemaining()) {
-            waitUntilSelected(deadline, key::isWritable);
+            if (!IS_NIO_BROKEN) waitUntilSelected(deadline, key::isWritable);
             channel.write(requestBuffer);
         }
 
         if (requestBuffer.hasRemaining())
             throw new SocketTimeoutException("timed out while sending request");
 
+        if (!IS_NIO_BROKEN) key.interestOps(SelectionKey.OP_READ);
+
         buffer.clear();
-        key.interestOps(SelectionKey.OP_READ);
 
         while (deadline.isAfter(Instant.now())) {
-            waitUntilSelected(deadline, key::isReadable);
+            if (!IS_NIO_BROKEN) waitUntilSelected(deadline, key::isReadable);
             var numRead = channel.read(buffer);
             if (numRead == 0) continue;
             if (numRead == -1) throw new EOFException("reached EOF while receiving response");
