@@ -1,11 +1,7 @@
 package ru.sigsegv.lab7.server;
 
-import sun.misc.Signal;
-
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 
 public class ServerApp {
     public static void main(String[] args) throws IOException {
@@ -18,16 +14,38 @@ public class ServerApp {
 
         var databasePath = getDatabasePath();
         var database = loadDatabase(databasePath);
-        setupSaveHandler(database, databasePath);
         setupShutdownHandler(database, databasePath);
 
         var handler = new CommandHandler(database);
-        SocketAddress address = new InetSocketAddress(port);
-        var server = new Server(address, handler);
+        var context = new ServerContext(handler);
 
-        while (true) {
-            server.tick(100);
+        var threads = new Thread[]{
+                spawnServer(new ServerTCP(context, port)),
+                spawnServer(new ServerUDP(context, port))
+        };
+
+        for (var thread : threads)
+            thread.start();
+
+        for (var thread : threads) {
+            while (true) {
+                try {
+                    thread.join();
+                    break;
+                } catch (InterruptedException ignored) {
+                }
+            }
         }
+    }
+
+    private static Thread spawnServer(Server server) {
+        return new Thread(() -> {
+            try {
+                server.serve();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private static File getDatabasePath() {
@@ -54,18 +72,6 @@ public class ServerApp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static void setupSaveHandler(Database database, File databasePath) {
-        Signal signal;
-
-        try {
-            signal = new Signal("TSTP");
-        } catch (Exception e) {
-            return;
-        }
-
-        Signal.handle(signal, s -> saveDatabase(database, databasePath));
     }
 
     private static void setupShutdownHandler(Database database, File databasePath) {

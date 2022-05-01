@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class CommandHandler implements RequestHandler {
-    private static final Logger logger = Logger.getLogger(CommandHandler.class.getSimpleName());
+    private static final Logger LOG = Logger.getLogger(CommandHandler.class.getSimpleName());
 
     private final Database database;
 
@@ -40,7 +40,7 @@ public class CommandHandler implements RequestHandler {
 
     @Handler(Command.ADD_IF_MAX)
     private Response<?> commandAddIfMax(MusicBand band) {
-        Set<MusicBand> set = database.getMusicBandSet();
+        var set = database.getMusicBandSet();
         var max = set.stream().max(Comparator.naturalOrder()).orElse(band);
         if (max.compareTo(band) <= 0) {
             set.add(band);
@@ -57,7 +57,7 @@ public class CommandHandler implements RequestHandler {
 
     @Handler(Command.COUNT_GREATER_THAN_STUDIO)
     private Response<?> commandCountGreaterThanStudio(Studio studio) {
-        Set<MusicBand> set = database.getMusicBandSet();
+        var set = database.getMusicBandSet();
         var count = set.stream().filter(b -> b.studio() != null && b.studio().compareTo(studio) > 0).count();
         return Response.success(count);
     }
@@ -128,14 +128,17 @@ public class CommandHandler implements RequestHandler {
 
     @Override
     public Response<?> handle(Request<?> request) {
-        logger.info(request.getCommand().toString());
+        LOG.info("Received command: " + request.getCommand());
         if (request.getArgument() != null)
-            logger.info(request.getArgument().toString());
+            LOG.info("Argument: " + request.getArgument());
 
         var handler = commands.get(request.getCommand());
         if (handler == null)
             return Response.invalidRequest();
-        return handler.handle(request);
+
+        synchronized (database) {
+            return handler.handle(request);
+        }
     }
 
     private HashMap<Command, RequestHandler> gatherCommands() {
@@ -145,10 +148,8 @@ public class CommandHandler implements RequestHandler {
             var annotation = method.getAnnotation(Handler.class);
             if (annotation == null) continue;
 
-            RequestHandler handler;
-
-            switch (method.getParameterCount()) {
-                case 0 -> handler = request -> {
+            RequestHandler handler = switch (method.getParameterCount()) {
+                case 0 -> request -> {
                     if (request.getArgument() != null)
                         return Response.invalidRequest();
 
@@ -160,7 +161,7 @@ public class CommandHandler implements RequestHandler {
                 };
                 case 1 -> {
                     var parameter = method.getParameters()[0];
-                    handler = request -> {
+                    yield request -> {
                         var argument = request.getArgument();
                         if (argument != null) {
                             if (!parameter.getType().isAssignableFrom(argument.getClass())) {
@@ -178,7 +179,7 @@ public class CommandHandler implements RequestHandler {
                     };
                 }
                 default -> throw new UnsupportedOperationException("command handlers cannot receive more than 1 argument");
-            }
+            };
 
             commandMethods.put(annotation.value(), handler);
         }
