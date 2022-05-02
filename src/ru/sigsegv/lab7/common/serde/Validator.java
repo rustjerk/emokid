@@ -2,7 +2,7 @@ package ru.sigsegv.lab7.common.serde;
 
 @FunctionalInterface
 public interface Validator<T> {
-    void validate(T value);
+    void validate(T value) throws ValidationException;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     static void validateRecord(Class<? extends Record> type, Object... fields) {
@@ -19,7 +19,12 @@ public interface Validator<T> {
                 throw new RuntimeException(e);
             }
 
-            validator.validate(fields[index]);
+            try {
+                validator.validate(fields[index]);
+            } catch (ValidationException e) {
+                throw new IllegalArgumentException(field.getName() + ": " + e.getMessage());
+            }
+
             index += 1;
         }
     }

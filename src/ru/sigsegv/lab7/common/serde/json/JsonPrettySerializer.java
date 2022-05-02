@@ -4,6 +4,10 @@ import ru.sigsegv.lab7.common.serde.SerDe;
 import ru.sigsegv.lab7.common.serde.SerDeUtils;
 import ru.sigsegv.lab7.common.serde.Serializer;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+
 /**
  * JSON format serializer (pretty printer)
  */
@@ -57,7 +61,9 @@ public class JsonPrettySerializer implements Serializer {
 
     @Override
     public void serializeDouble(double val) {
-        buffer.append(val);
+        var df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+        df.setMaximumFractionDigits(340);
+        buffer.append(df.format(val));
     }
 
     @Override

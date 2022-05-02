@@ -15,8 +15,8 @@ public record Response<T>(Status status, T payload) implements Serializable {
         return new Response<>(Status.ERROR, "invalid request");
     }
 
-    public static Response<String> unauthorized() {
-        return new Response<>(Status.ERROR, "unauthorized");
+    public static Response<String> unauthenticated() {
+        return new Response<>(Status.ERROR, "unauthenticated");
     }
 
     public static Response<String> noSuchUser() {

@@ -33,6 +33,10 @@ public abstract class Client {
         this.authToken = authToken;
     }
 
+    public boolean isAuthenticated() {
+        return authToken != null;
+    }
+
     public <T> Response<T> request(Request<?> request) throws IOException {
         return requestImpl(new Request<>(request.command(), request.argument(), authToken));
     }

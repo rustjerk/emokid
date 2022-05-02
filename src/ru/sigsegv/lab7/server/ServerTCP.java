@@ -8,6 +8,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.logging.Level;
@@ -21,13 +22,17 @@ public class ServerTCP extends Server {
     public ServerTCP(ServerContext context, int port) throws IOException {
         super(context);
         serverSocket = new ServerSocket(port);
+        serverSocket.setSoTimeout(1000);
     }
 
     @Override
     public void serve() throws IOException {
         while (context.isRunning.get()) {
-            var clientSocket = serverSocket.accept();
-            executeSocketTask(context.readExecutor, clientSocket, this::clientRead);
+            try {
+                var clientSocket = serverSocket.accept();
+                executeSocketTask(context.readExecutor, clientSocket, this::clientRead);
+            } catch (SocketTimeoutException ignored) {
+            }
         }
     }
 

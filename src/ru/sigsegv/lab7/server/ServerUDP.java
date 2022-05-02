@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.logging.Level;
@@ -21,15 +22,19 @@ public class ServerUDP extends Server {
     public ServerUDP(ServerContext context, int port) throws IOException {
         super(context);
         socket = new DatagramSocket(port);
+        socket.setSoTimeout(1000);
     }
 
     @Override
     public void serve() throws IOException {
         while (context.isRunning.get()) {
-            var buf = new byte[NetworkCodec.MAX_MESSAGE_SIZE];
-            var packet = new DatagramPacket(buf, buf.length);
-            socket.receive(packet);
-            executeTask(context.handleExecutor, packet.getSocketAddress(), () -> handlePacket(packet));
+            try {
+                var buf = new byte[NetworkCodec.MAX_MESSAGE_SIZE];
+                var packet = new DatagramPacket(buf, buf.length);
+                socket.receive(packet);
+                executeTask(context.handleExecutor, packet.getSocketAddress(), () -> handlePacket(packet));
+            } catch (SocketTimeoutException ignored) {
+            }
         }
     }
 

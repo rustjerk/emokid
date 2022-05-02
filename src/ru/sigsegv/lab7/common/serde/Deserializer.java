@@ -1,6 +1,10 @@
 package ru.sigsegv.lab7.common.serde;
 
 public interface Deserializer {
+    default DataType getHint() throws DeserializeException {
+        return null;
+    }
+
     boolean deserializeBoolean() throws DeserializeException;
 
     long deserializeLong() throws DeserializeException;
@@ -20,10 +24,18 @@ public interface Deserializer {
     default void setHelp(String help) {
     }
 
+    @SuppressWarnings("RedundantThrows")
     interface Map {
         String nextKey(String keyHint, boolean isRequired) throws DeserializeException;
 
         <T> T nextValue(Class<T> type) throws DeserializeException;
+
+        default boolean retryValue(Throwable cause) throws DeserializeException {
+            return false;
+        }
+
+        default void finishValue() throws DeserializeException {
+        }
 
         void finish() throws DeserializeException;
     }

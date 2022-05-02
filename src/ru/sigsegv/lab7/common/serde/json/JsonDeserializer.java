@@ -1,5 +1,6 @@
 package ru.sigsegv.lab7.common.serde.json;
 
+import ru.sigsegv.lab7.common.serde.DataType;
 import ru.sigsegv.lab7.common.serde.DeserializeException;
 import ru.sigsegv.lab7.common.serde.Deserializer;
 import ru.sigsegv.lab7.common.serde.SerDe;
@@ -23,6 +24,18 @@ public class JsonDeserializer implements Deserializer {
     public JsonDeserializer(Scanner scanner) {
         tokenizer = new JsonTokenizer(scanner);
         savedToken = null;
+    }
+
+    @Override
+    public DataType getHint() throws DeserializeException {
+        return switch (peek()) {
+            case TRUE, FALSE -> DataType.BOOLEAN;
+            case L_BRACKET -> DataType.SEQ;
+            case L_BRACE -> DataType.MAP;
+            case NUMBER -> DataType.DOUBLE;
+            case STRING -> DataType.STRING;
+            default -> null;
+        };
     }
 
     @Override

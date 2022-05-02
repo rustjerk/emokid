@@ -85,9 +85,24 @@ public class RecordDeserializer<T extends Record> implements TypeDeserializer<T>
             if (actualField == null)
                 throw new DeserializeException(deserializer.formatErrorMessage("unexpected field `%s`", actualKey));
 
-            var value = map.nextValue(actualField.type);
-            if (actualField.validator != null) actualField.validator.validate(value);
-            values[actualField.index] = value;
+            while (true) {
+                var value = map.nextValue(actualField.type);
+                values[actualField.index] = value;
+                if (actualField.validator != null) {
+                    try {
+                        actualField.validator.validate(value);
+                        map.finishValue();
+                        break;
+                    } catch (ValidationException e) {
+                        var exc = new DeserializeException(deserializer.formatErrorMessage("%s", e.getMessage()));
+                        if (!map.retryValue(exc))
+                            throw exc;
+                    }
+                } else {
+                    map.finishValue();
+                    break;
+                }
+            }
         }
 
         map.finish();

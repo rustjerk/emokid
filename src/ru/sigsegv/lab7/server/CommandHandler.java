@@ -268,7 +268,7 @@ public class CommandHandler implements RequestHandler {
         }
 
         if (entry.requiresAuth() && currentUser == null)
-            return Response.unauthorized();
+            return Response.unauthenticated();
 
         var context = new CommandContext(currentUser);
 

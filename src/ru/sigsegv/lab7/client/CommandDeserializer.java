@@ -31,7 +31,7 @@ public class CommandDeserializer implements Deserializer {
                 if ("true".startsWith(line)) return true;
                 if ("false".startsWith(line)) return false;
             }
-            System.out.println("Invalid input. Please try again.");
+            ctx.println("Invalid input. Please try again.");
         }
     }
 
@@ -100,14 +100,23 @@ public class CommandDeserializer implements Deserializer {
             public <T> T nextValue(Class<T> type) {
                 while (true) {
                     try {
-                        var value = SerDe.deserialize(CommandDeserializer.this, type);
-                        setHelp(null);
-                        popLocation();
-                        return value;
+                        return SerDe.deserialize(CommandDeserializer.this, type);
                     } catch (Exception e) {
-                        System.out.println("Error: " + e.getMessage());
+                        ctx.println("Error: " + e.getMessage());
                     }
                 }
+            }
+
+            @Override
+            public boolean retryValue(Throwable cause) {
+                ctx.println("Invalid input: " + cause.getMessage());
+                return true;
+            }
+
+            @Override
+            public void finishValue() {
+                setHelp(null);
+                popLocation();
             }
 
             @Override
@@ -157,7 +166,7 @@ public class CommandDeserializer implements Deserializer {
     }
 
     private void invalidInput() {
-        System.out.println("Invalid input. Please try again.");
+        ctx.println("Invalid input. Please try again.");
     }
 
     private String readLine(String prompt) throws DeserializeException {

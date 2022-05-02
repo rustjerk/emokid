@@ -1,6 +1,7 @@
 package ru.sigsegv.lab7.common.model;
 
 import ru.sigsegv.lab7.common.serde.Validate;
+import ru.sigsegv.lab7.common.serde.ValidationException;
 import ru.sigsegv.lab7.common.serde.Validator;
 
 import java.io.Serializable;
@@ -13,15 +14,15 @@ public record Coordinates(@Validate(XValidator.class) double x,
 
     public static class XValidator implements Validator<Double> {
         @Override
-        public void validate(Double x) {
-            if (x > 41) throw new IllegalArgumentException("x cannot be above 41");
+        public void validate(Double x) throws ValidationException {
+            if (x > 41) throw new ValidationException("cannot be above 41");
         }
     }
 
     public static class YValidator implements Validator<Long> {
         @Override
-        public void validate(Long y) {
-            if (y > 107) throw new IllegalArgumentException("y cannot be above 107");
+        public void validate(Long y) throws ValidationException {
+            if (y > 107) throw new ValidationException("cannot be above 107");
         }
     }
 }

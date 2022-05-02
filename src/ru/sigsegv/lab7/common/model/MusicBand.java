@@ -1,8 +1,7 @@
 package ru.sigsegv.lab7.common.model;
 
 import ru.sigsegv.lab7.client.CommandDeserializer;
-import ru.sigsegv.lab7.common.serde.Nullable;
-import ru.sigsegv.lab7.common.serde.SkipDeserialization;
+import ru.sigsegv.lab7.common.serde.*;
 
 import java.io.Serializable;
 import java.time.ZonedDateTime;
@@ -14,11 +13,14 @@ public record MusicBand(@SkipDeserialization(deserializer = CommandDeserializer.
                         long id,
                         @SkipDeserialization(deserializer = CommandDeserializer.class)
                         String owner,
+                        @Validate(NonBlankValidator.class)
                         String name,
                         Coordinates coordinates,
                         @SkipDeserialization(deserializer = CommandDeserializer.class)
                         ZonedDateTime creationDate,
+                        @Validate(NumberOfParticipantsValidator.class)
                         int numberOfParticipants,
+                        @Validate(NonBlankValidator.class)
                         String description,
                         @Nullable
                         MusicGenre genre,
@@ -36,5 +38,12 @@ public record MusicBand(@SkipDeserialization(deserializer = CommandDeserializer.
     @Override
     public int compareTo(MusicBand o) {
         return name.compareTo(o.name);
+    }
+
+    public static class NumberOfParticipantsValidator implements Validator<Integer> {
+        @Override
+        public void validate(Integer numberOfParticipants) throws ValidationException {
+            if (numberOfParticipants <= 0) throw new ValidationException("should be above 0");
+        }
     }
 }

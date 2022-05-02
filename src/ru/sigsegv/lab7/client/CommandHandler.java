@@ -36,12 +36,15 @@ public class CommandHandler {
 
     private final HashMap<String, CommandEntry> commands = gatherCommands();
 
-    public CommandHandler(SocketAddress serverAddress) throws IOException {
+    public CommandHandler(SocketAddress serverAddress, CommandContext ctx) throws IOException {
         clientTCP = new ClientTCP(serverAddress);
         clientUDP = new ClientUDP(serverAddress);
         client = clientTCP;
+        this.ctx = ctx;
+    }
 
-        ctx = new ConsoleCommandContext();
+    public CommandHandler(SocketAddress serverAddress) throws IOException {
+        this(serverAddress, new ConsoleCommandContext());
     }
 
     @Handler(command = "add",
@@ -116,12 +119,15 @@ public class CommandHandler {
 
     @Handler(command = "help",
             description = "Prints command listing and help.",
-            helpMessage = "Prints command list and help.\nSyntax: help [cmd]")
+            helpMessage = "Prints command list and help.\nSyntax: help [cmd]",
+            requiresAuth = false)
     private void commandHelp(String[] args) {
         if (args.length < 2) {
             ctx.println("Available commands: ");
-            var commandNames = commands.keySet().stream().sorted().toList();
-            var maxLength = commands.keySet().stream().mapToInt(String::length).max().orElse(0);
+            var commandNames = commands.keySet().stream()
+                    .filter(cmdName -> !commands.get(cmdName).requiresAuth() || client.isAuthenticated())
+                    .sorted().toList();
+            var maxLength = commandNames.stream().mapToInt(String::length).max().orElse(0);
 
             for (var commandName : commandNames) {
                 var command = commands.get(commandName);
@@ -153,7 +159,8 @@ public class CommandHandler {
     }
 
     @Handler(command = "login",
-            description = "Login.")
+            description = "Login.",
+            requiresAuth = false)
     private void commandLogin(String[] args) throws IOException {
         var credentials = enterCredentials();
         Response<String> response = client.request(Command.LOGIN, credentials);
@@ -163,6 +170,14 @@ public class CommandHandler {
             clientTCP.setAuthToken(response.payload());
             clientUDP.setAuthToken(response.payload());
         }
+    }
+
+    @Handler(command = "logout",
+            description = "Logout.",
+            requiresAuth = true)
+    private void commandLogout(String[] args) {
+        clientTCP.setAuthToken(null);
+        clientUDP.setAuthToken(null);
     }
 
     @Handler(command = "min_by_studio",
@@ -206,7 +221,8 @@ public class CommandHandler {
     }
 
     @Handler(command = "register",
-            description = "Register.")
+            description = "Register.",
+            requiresAuth = false)
     private void commandRegister(String[] args) throws IOException {
         var credentials = enterCredentials();
         var response = client.request(Command.REGISTER, credentials);
@@ -305,15 +321,8 @@ public class CommandHandler {
     }
 
     private Credentials enterCredentials() {
-        var console = System.console();
-        if (console == null) {
-            var username = ctx.readLine("Username: ");
-            var password = ctx.readLine("Password: ");
-            return new Credentials(username, password);
-        }
-
-        var username = console.readLine("Username: ");
-        var password = String.valueOf(console.readPassword("Password: "));
+        var username = ctx.readLine("Username: ");
+        var password = ctx.readLine("Password: ");
         return new Credentials(username, password);
     }
 
@@ -325,7 +334,7 @@ public class CommandHandler {
 
     public void runREPL() {
         while (ctx.isRunning()) {
-            var line = ctx.readLine("> ");
+            var line = ctx.readLine(ctx.defaultPrompt());
             if (line == null) break;
 
             executeLine(line);
@@ -347,11 +356,17 @@ public class CommandHandler {
             return;
         }
 
+        if (command.requiresAuth() && !client.isAuthenticated()) {
+            ctx.println("Unauthenticated.");
+            return;
+        }
+
         try {
             command.execute(args);
+            ctx.flush();
         } catch (Exception e) {
             ctx.println("Error: " + getRootExceptionMessage(e));
-//            e.printStackTrace();
+            e.printStackTrace();
         }
     }
 
@@ -390,6 +405,11 @@ public class CommandHandler {
                         return getDescription();
                     return helpMessage;
                 }
+
+                @Override
+                public boolean requiresAuth() {
+                    return annotation.requiresAuth();
+                }
             };
 
             commandMethods.put(annotation.command(), handler);
@@ -415,6 +435,8 @@ public class CommandHandler {
         String description() default "Self-explanatory.";
 
         String helpMessage() default "";
+
+        boolean requiresAuth() default true;
     }
 
     private interface CommandEntry {
@@ -423,5 +445,7 @@ public class CommandHandler {
         String getDescription();
 
         String getHelpMessage();
+
+        boolean requiresAuth();
     }
 }

@@ -1,5 +1,9 @@
 package ru.sigsegv.lab7.common.serde;
 
+import ru.sigsegv.lab7.common.serde.json.dom.JsonTypeDeserializer;
+import ru.sigsegv.lab7.common.serde.json.dom.JsonTypeSerializer;
+import ru.sigsegv.lab7.common.serde.json.dom.JsonValue;
+
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -49,6 +53,9 @@ public class SerDe {
         registerSerializer(String.class, Serializer::serializeString);
         registerDeserializer(String.class, Deserializer::deserializeString);
 
+        registerSerializer(JsonValue.class, new JsonTypeSerializer());
+        registerDeserializer(JsonValue.class, new JsonTypeDeserializer());
+
         registerSerializer(ZonedDateTime.class, (s, v) -> s.serializeString(v.format(DateTimeFormatter.ISO_ZONED_DATE_TIME)));
         registerDeserializer(ZonedDateTime.class, d -> {
             try {
@@ -58,7 +65,6 @@ public class SerDe {
                 throw new DeserializeException(d.formatErrorMessage(e.getMessage()));
             }
         });
-
     }
 
     public static <T> void registerSerializer(Class<T> type, TypeSerializer<T> serializer) {
@@ -71,13 +77,19 @@ public class SerDe {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> TypeSerializer<T> getSerializer(Class<T> type) {
-        return (TypeSerializer<T>) typeSerializers.computeIfAbsent(type, t -> {
+        var ser = (TypeSerializer<T>) typeSerializers.computeIfAbsent(type, t -> {
             if (type.isRecord())
                 return new RecordSerializer(t);
             if (type.isEnum())
                 return new EnumSerializer();
-            throw new UnsupportedOperationException("cannot serialize " + t.getName());
+            return null;
         });
+
+        if (ser == null && !type.equals(Object.class)) {
+            return (TypeSerializer<T>) getSerializer(type.getSuperclass());
+        }
+
+        return ser;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
