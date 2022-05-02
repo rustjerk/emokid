@@ -12,6 +12,8 @@ import java.time.ZonedDateTime;
  */
 public record MusicBand(@SkipDeserialization(deserializer = CommandDeserializer.class)
                         long id,
+                        @SkipDeserialization(deserializer = CommandDeserializer.class)
+                        String owner,
                         String name,
                         Coordinates coordinates,
                         @SkipDeserialization(deserializer = CommandDeserializer.class)
@@ -24,7 +26,11 @@ public record MusicBand(@SkipDeserialization(deserializer = CommandDeserializer.
                         Studio studio) implements Comparable<MusicBand>, Serializable {
 
     public MusicBand withId(long id) {
-        return new MusicBand(id, name, coordinates, creationDate, numberOfParticipants, description, genre, studio);
+        return new MusicBand(id, owner, name, coordinates, creationDate, numberOfParticipants, description, genre, studio);
+    }
+
+    public MusicBand withParams(long id, String owner, ZonedDateTime creationDate) {
+        return new MusicBand(id, owner, name, coordinates, creationDate, numberOfParticipants, description, genre, studio);
     }
 
     @Override

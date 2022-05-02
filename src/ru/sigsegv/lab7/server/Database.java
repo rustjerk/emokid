@@ -1,100 +1,83 @@
 package ru.sigsegv.lab7.server;
 
+import ru.sigsegv.lab7.common.model.Coordinates;
 import ru.sigsegv.lab7.common.model.MusicBand;
-import ru.sigsegv.lab7.common.serde.DeserializeException;
-import ru.sigsegv.lab7.common.serde.Deserializer;
-import ru.sigsegv.lab7.common.serde.json.JsonDeserializer;
-import ru.sigsegv.lab7.common.serde.json.JsonPrettySerializer;
+import ru.sigsegv.lab7.common.model.MusicGenre;
+import ru.sigsegv.lab7.common.model.Studio;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.Scanner;
-import java.util.Set;
 
-/**
- * Database containing music bands
- */
 public class Database {
+    private final String dbURL;
+    private final String dbUsername;
+    private final String dbPassword;
+
     private final HashSet<MusicBand> musicBandSet = new LinkedHashSet<>();
     private final LocalDateTime initializationTime = LocalDateTime.now();
 
-    /**
-     * Gets set of the music bands
-     *
-     * @return set of the music bands
-     */
+    public Database(String dbURL, String dbUsername, String dbPassword) {
+        this.dbURL = dbURL;
+        this.dbUsername = dbUsername;
+        this.dbPassword = dbPassword;
+
+        try {
+            loadDatabase();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(dbURL, dbUsername, dbPassword);
+    }
+
     public HashSet<MusicBand> getMusicBandSet() {
         return musicBandSet;
     }
 
-    /**
-     * Gets initialization time
-     *
-     * @return initialization time
-     */
     public LocalDateTime getInitializationTime() {
         return initializationTime;
     }
 
-    /**
-     * Gets type of the collection
-     *
-     * @return type of the collection
-     */
     public String getType() {
         return "LinkedHashSet";
     }
 
-    /**
-     * Saves database to a file
-     *
-     * @param file file to save into
-     * @throws IOException if there is an error writing to file
-     */
-    public void save(File file) throws IOException {
-        var serializer = new JsonPrettySerializer();
-        var map = serializer.serializeSeq();
+    private void loadDatabase() throws SQLException {
+        try (var conn = getConnection()) {
+            var stmt = conn.prepareStatement(
+                    "select id, owner, name, coord_x, coord_y, creation_date, " +
+                            "num_participants, description, genre, studio_name, studio_address from music_bands");
+            var res = stmt.executeQuery();
 
-        for (var band : musicBandSet) {
-            map.serializeValue(band);
+            while (res.next()) {
+                var id = res.getLong(1);
+                var owner = res.getString(2);
+                var name = res.getString(3);
+                var coordX = res.getDouble(4);
+                var coordY = res.getLong(5);
+                var creationDate = res.getObject(6, OffsetDateTime.class).toZonedDateTime();
+                var numParticipants = res.getInt(7);
+                var description = res.getString(8);
+                var genreStr = res.getString(9);
+                var studioName = res.getString(10);
+                var studioAddress = res.getString(11);
+
+                var coordinates = new Coordinates(coordX, coordY);
+                var genre = Arrays.stream(MusicGenre.values()).filter(v -> v.name().equals(genreStr))
+                        .findFirst().orElse(null);
+                var studio = studioAddress == null ? null : new Studio(studioName, studioAddress);
+
+                var musicBand = new MusicBand(id, owner, name, coordinates, creationDate, numParticipants, description, genre, studio);
+                musicBandSet.add(musicBand);
+            }
         }
-
-        map.finish();
-        serializer.getString();
-
-        var stream = new BufferedOutputStream(new FileOutputStream(file));
-        stream.write(serializer.getString().getBytes());
-        stream.flush();
-        stream.close();
-    }
-
-    /**
-     * Loads database from a file
-     *
-     * @param file file to load from
-     * @throws IOException          if there is an error reading from file
-     * @throws DeserializeException if the input has errors
-     */
-    public void load(File file) throws IOException, DeserializeException {
-        Deserializer deserializer = new JsonDeserializer(new Scanner(file));
-        var map = deserializer.deserializeSeq();
-
-        Set<Long> ids = new HashSet<>();
-
-        musicBandSet.clear();
-        while (map.hasNext()) {
-            var band = map.nextValue(MusicBand.class);
-            if (ids.contains(band.id()))
-                throw new DeserializeException(deserializer.formatErrorMessage("ID collision: %d", band.id()));
-            ids.add(band.id());
-            musicBandSet.add(band);
-        }
-
-        map.finish();
     }
 }

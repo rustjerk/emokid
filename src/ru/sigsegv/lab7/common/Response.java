@@ -2,15 +2,7 @@ package ru.sigsegv.lab7.common;
 
 import java.io.Serializable;
 
-public class Response<T> implements Serializable {
-    private final Status status;
-    private final T payload;
-
-    public Response(Status status, T payload) {
-        this.status = status;
-        this.payload = payload;
-    }
-
+public record Response<T>(Status status, T payload) implements Serializable {
     public static Response<String> success() {
         return new Response<>(Status.SUCCESS, null);
     }
@@ -23,24 +15,32 @@ public class Response<T> implements Serializable {
         return new Response<>(Status.ERROR, "invalid request");
     }
 
+    public static Response<String> unauthorized() {
+        return new Response<>(Status.ERROR, "unauthorized");
+    }
+
+    public static Response<String> noSuchUser() {
+        return new Response<>(Status.ERROR, "no such user");
+    }
+
+    public static Response<String> invalidPassword() {
+        return new Response<>(Status.ERROR, "invalid password");
+    }
+
+    public static Response<String> usernameTaken() {
+        return new Response<>(Status.ERROR, "username already taken");
+    }
+
     public static Response<Exception> exception(Exception e) {
         return new Response<>(Status.ERROR, e);
     }
 
-    public Status getStatus() {
-        return status;
-    }
-
     public boolean isSuccess() {
-        return getStatus() == Status.SUCCESS;
+        return status() == Status.SUCCESS;
     }
 
     public boolean isError() {
-        return getStatus() == Status.ERROR;
-    }
-
-    public T getPayload() {
-        return payload;
+        return status() == Status.ERROR;
     }
 
     public enum Status {

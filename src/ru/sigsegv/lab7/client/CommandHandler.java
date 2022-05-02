@@ -2,6 +2,7 @@ package ru.sigsegv.lab7.client;
 
 import ru.sigsegv.lab7.common.Command;
 import ru.sigsegv.lab7.common.Response;
+import ru.sigsegv.lab7.common.model.Credentials;
 import ru.sigsegv.lab7.common.model.DatabaseInfo;
 import ru.sigsegv.lab7.common.model.MusicBand;
 import ru.sigsegv.lab7.common.model.Studio;
@@ -82,7 +83,7 @@ public class CommandHandler {
         Response<Long> response = client.request(Command.COUNT_GREATER_THAN_STUDIO, studio);
         printResponse(response);
         if (response.isSuccess()) {
-            ctx.println(response.getPayload().toString());
+            ctx.println(response.payload().toString());
         }
     }
 
@@ -145,10 +146,23 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        var info = response.getPayload();
+        var info = response.payload();
         ctx.println("Collection type: " + info.type());
         ctx.println("Collection size: " + info.size());
         ctx.println("Initialized at " + info.initializationTime().format(ISO_LOCAL_DATE_TIME));
+    }
+
+    @Handler(command = "login",
+            description = "Login.")
+    private void commandLogin(String[] args) throws IOException {
+        var credentials = enterCredentials();
+        Response<String> response = client.request(Command.LOGIN, credentials);
+        printResponse(response);
+        if (response.isSuccess()) {
+            ctx.println("Success.");
+            clientTCP.setAuthToken(response.payload());
+            clientUDP.setAuthToken(response.payload());
+        }
     }
 
     @Handler(command = "min_by_studio",
@@ -158,8 +172,8 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        if (response.getPayload() != null) {
-            ctx.println(response.getPayload().toString());
+        if (response.payload() != null) {
+            ctx.println(response.payload().toString());
         } else {
             ctx.println("No studios.");
         }
@@ -172,7 +186,7 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        for (var studio : response.getPayload()) {
+        for (var studio : response.payload()) {
             ctx.println(studio.toString());
         }
     }
@@ -191,6 +205,15 @@ public class CommandHandler {
         }
     }
 
+    @Handler(command = "register",
+            description = "Register.")
+    private void commandRegister(String[] args) throws IOException {
+        var credentials = enterCredentials();
+        var response = client.request(Command.REGISTER, credentials);
+        printResponse(response);
+        if (response.isSuccess()) ctx.println("Success.");
+    }
+
     @Handler(command = "remove_by_id",
             description = "Removes a music band by id.",
             helpMessage = "Removes a music band by id.\nSyntax: remove_by_id <id>")
@@ -201,8 +224,8 @@ public class CommandHandler {
         Response<Boolean> response = client.request(Command.REMOVE_BY_ID, id);
         printResponse(response);
 
-        if (response.isSuccess() && !response.getPayload()) {
-            ctx.println("No such element.");
+        if (response.isSuccess() && !response.payload()) {
+            ctx.println("No band with specified id and owned by current user.");
         }
     }
 
@@ -233,7 +256,7 @@ public class CommandHandler {
         printResponse(response);
         if (response.isError()) return;
 
-        for (var band : response.getPayload()) {
+        for (var band : response.payload()) {
             ctx.println(band.toString());
         }
     }
@@ -251,7 +274,7 @@ public class CommandHandler {
 
         Response<Boolean> response = client.request(Command.UPDATE, band);
         printResponse(response);
-        if (response.isSuccess() && !response.getPayload()) {
+        if (response.isSuccess() && !response.payload()) {
             ctx.println("No such ID.");
         }
     }
@@ -272,12 +295,7 @@ public class CommandHandler {
         }
     }
 
-    /**
-     * Asks the user to enter a music band, line by line.
-     *
-     * @return music band instance, or null if it could not be parsed
-     */
-    public MusicBand enterMusicBand() {
+    private MusicBand enterMusicBand() {
         try {
             return SerDe.deserialize(new CommandDeserializer(ctx), MusicBand.class);
         } catch (DeserializeException e) {
@@ -286,9 +304,22 @@ public class CommandHandler {
         }
     }
 
-    public void printResponse(Response<?> response) {
+    private Credentials enterCredentials() {
+        var console = System.console();
+        if (console == null) {
+            var username = ctx.readLine("Username: ");
+            var password = ctx.readLine("Password: ");
+            return new Credentials(username, password);
+        }
+
+        var username = console.readLine("Username: ");
+        var password = String.valueOf(console.readPassword("Password: "));
+        return new Credentials(username, password);
+    }
+
+    private void printResponse(Response<?> response) {
         if (response.isError()) {
-            ctx.println("Error: " + response.getPayload());
+            ctx.println("Error: " + response.payload());
         }
     }
 

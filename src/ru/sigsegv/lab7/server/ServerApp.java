@@ -1,27 +1,29 @@
 package ru.sigsegv.lab7.server;
 
+import ru.sigsegv.lab7.common.serde.DeserializeException;
+import ru.sigsegv.lab7.common.serde.SerDe;
+import ru.sigsegv.lab7.common.serde.json.JsonDeserializer;
+
 import java.io.File;
 import java.io.IOException;
+import java.util.Scanner;
 
 public class ServerApp {
     public static void main(String[] args) throws IOException {
         if (args.length < 1) {
-            System.out.println("syntax: client <port>");
+            System.out.println("syntax: client <cfg_file>");
             return;
         }
 
-        var port = Integer.parseInt(args[0]);
+        var config = readConfig(args[0]);
 
-        var databasePath = getDatabasePath();
-        var database = loadDatabase(databasePath);
-        setupShutdownHandler(database, databasePath);
-
+        var database = new Database(config.dbURL(), config.dbUser(), config.dbPass());
         var handler = new CommandHandler(database);
         var context = new ServerContext(handler);
 
         var threads = new Thread[]{
-                spawnServer(new ServerTCP(context, port)),
-                spawnServer(new ServerUDP(context, port))
+                spawnServer(new ServerTCP(context, config.port())),
+                spawnServer(new ServerUDP(context, config.port()))
         };
 
         for (var thread : threads)
@@ -48,33 +50,12 @@ public class ServerApp {
         });
     }
 
-    private static File getDatabasePath() {
-        var savePath = System.getenv("FILE");
-        return new File(savePath == null ? "save.json" : savePath);
-    }
-
-    private static Database loadDatabase(File databasePath) {
-        var database = new Database();
-
+    private static Config readConfig(String path) {
         try {
-            database.load(databasePath);
-        } catch (Exception e) {
-            System.err.println("Error loading database: " + e.getMessage());
-        }
-
-        return database;
-    }
-
-    private static void saveDatabase(Database database, File databasePath) {
-        try {
-            System.err.println("Saving...");
-            database.save(databasePath);
-        } catch (IOException e) {
+            var deserializer = new JsonDeserializer(new Scanner(new File(path)));
+            return SerDe.deserialize(deserializer, Config.class);
+        } catch (IOException | DeserializeException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static void setupShutdownHandler(Database database, File databasePath) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> saveDatabase(database, databasePath)));
     }
 }

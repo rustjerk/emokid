@@ -13,7 +13,7 @@ public class ClientUDP extends Client {
     }
 
     @Override
-    public <T> Response<T> request(Request<?> request) throws IOException {
+    public <T> Response<T> requestImpl(Request<?> request) throws IOException {
         var socket = DatagramChannel.open().connect(serverAddress);
         return requestByChannel(socket, request);
     }

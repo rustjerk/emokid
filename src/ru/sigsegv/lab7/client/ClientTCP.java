@@ -13,7 +13,7 @@ public class ClientTCP extends Client {
     }
 
     @Override
-    public <T> Response<T> request(Request<?> request) throws IOException {
+    public <T> Response<T> requestImpl(Request<?> request) throws IOException {
         var socket = SocketChannel.open(serverAddress);
         return requestByChannel(socket, request);
     }

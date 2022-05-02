@@ -22,12 +22,20 @@ public abstract class Client {
     protected final SocketAddress serverAddress;
     protected final ByteBuffer buffer = ByteBuffer.allocate(NetworkCodec.MAX_MESSAGE_SIZE);
 
+    protected String authToken;
+
     public Client(SocketAddress serverAddress) throws IOException {
         selector = Selector.open();
         this.serverAddress = serverAddress;
     }
 
-    public abstract <T> Response<T> request(Request<?> request) throws IOException;
+    public void setAuthToken(String authToken) {
+        this.authToken = authToken;
+    }
+
+    public <T> Response<T> request(Request<?> request) throws IOException {
+        return requestImpl(new Request<>(request.command(), request.argument(), authToken));
+    }
 
     public <T> Response<T> request(Command cmd, Object arg) throws IOException {
         return request(new Request<>(cmd, arg));
@@ -36,6 +44,8 @@ public abstract class Client {
     public <T> Response<T> request(Command cmd) throws IOException {
         return request(new Request<>(cmd));
     }
+
+    protected abstract <T> Response<T> requestImpl(Request<?> request) throws IOException;
 
     protected void waitUntilSelected(Instant deadline, BooleanSupplier cond) throws IOException {
         while (Instant.now().isBefore(deadline) && !cond.getAsBoolean()) {
