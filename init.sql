@@ -1,31 +1,31 @@
-drop table if exists music_bands;
-drop table if exists auth_tokens;
-drop table if exists users;
-
 create table users
 (
-    username text primary key,
-    password text,
-    salt     text
+    username Utf8,
+    password Utf8,
+    salt     Utf8,
+    primary key (username)
 );
 
 create table auth_tokens
 (
-    username text primary key,
-    token    text
+    username Utf8,
+    token    Utf8,
+    primary key (username)
 );
 
 create table music_bands
 (
-    id               bigserial primary key,
-    owner            text             not null,
-    name             text             not null,
-    coord_x          double precision not null,
-    coord_y          bigint           not null,
-    creation_date    timestamptz      not null,
-    num_participants int              not null,
-    description      text             not null,
-    genre            text,
-    studio_name      text,
-    studio_address   text
+    id               Uint64,
+    owner            Utf8,
+    name             Utf8,
+    coord_x          Double,
+    coord_y          Uint64,
+    creation_date    Datetime,
+    timezone         Utf8,
+    num_participants Uint32,              
+    description      Utf8,
+    genre            Utf8,
+    studio_name      Utf8,
+    studio_address   Utf8,
+    primary key (id)
 );
