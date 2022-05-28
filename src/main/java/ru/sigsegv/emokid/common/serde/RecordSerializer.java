@@ -8,11 +8,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class RecordSerializer<T extends Record> implements TypeSerializer<T> {
-    private final Map<String, Method> fields;
+    private final Map<String, Entry> fields;
 
     public RecordSerializer(Class<T> type) {
         fields = Arrays.stream(type.getRecordComponents())
-                .collect(Collectors.toMap(RecordComponent::getName, RecordComponent::getAccessor, (x, y) -> y, LinkedHashMap::new));
+                .collect(Collectors.toMap(RecordComponent::getName,
+                        r -> new Entry(r.getAccessor(), r.getType()), (x, y) -> y, LinkedHashMap::new));
     }
 
     @Override
@@ -22,16 +23,19 @@ public class RecordSerializer<T extends Record> implements TypeSerializer<T> {
         for (var entry : fields.entrySet()) {
             try {
                 var key = entry.getKey();
-                var value = entry.getValue().invoke(source);
+                var value = entry.getValue().accessor.invoke(source);
 
                 if (value == null) continue;
                 map.serializeKey(key);
-                map.serializeValue(value);
+                map.serializeValue(value, entry.getValue().type);
             } catch (ReflectiveOperationException e) {
                 throw new RuntimeException("reflection error: " + e.getMessage());
             }
         }
 
         map.finish();
+    }
+
+    private record Entry(Method accessor, Class<?> type) {
     }
 }

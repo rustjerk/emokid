@@ -7,6 +7,7 @@ import ru.sigsegv.emokid.common.serde.json.dom.JsonValue;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -64,6 +65,51 @@ public class SerDe {
             } catch (DateTimeParseException e) {
                 throw new DeserializeException(d.formatErrorMessage(e.getMessage()));
             }
+        });
+
+        registerSerializer(ArrayList.class, (s, v) -> {
+            var seq = s.serializeSeq();
+            for (var item : v) seq.serializeValue(item, Object.class);
+            seq.finish();
+        });
+
+        registerDeserializer(ArrayList.class, d -> {
+            var list = new ArrayList<>();
+            var seq = d.deserializeSeq();
+            while (seq.hasNext()) {
+                list.add(seq.nextValue(Object.class));
+            }
+            seq.finish();
+            return list;
+        });
+
+        registerSerializer(Object.class, (s, v) -> {
+            var map = s.serializeMap();
+            map.serializeKey("type");
+            map.serializeValue(v.getClass().getName());
+            map.serializeKey("value");
+            map.serializeValue(v);
+            map.finish();
+        });
+
+        registerDeserializer(Object.class, d -> {
+            var map = d.deserializeMap();
+
+            map.nextKey("type", true);
+            var typeName = map.nextValue(String.class);
+
+            Class<?> type;
+            try {
+                type = Class.forName(typeName);
+            } catch (ClassNotFoundException e) {
+                throw new DeserializeException(d.formatErrorMessage("no such class: %s", typeName));
+            }
+
+            map.nextKey("value", true);
+            var value = map.nextValue(type);
+
+            map.finish();
+            return value;
         });
     }
 

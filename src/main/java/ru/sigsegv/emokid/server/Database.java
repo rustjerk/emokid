@@ -8,8 +8,8 @@ import ru.sigsegv.emokid.common.model.Studio;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -20,7 +20,7 @@ public class Database {
     private final String dbPassword;
 
     private final HashSet<MusicBand> musicBandSet = new LinkedHashSet<>();
-    private final LocalDateTime initializationTime = LocalDateTime.now();
+    private final ZonedDateTime initializationTime = ZonedDateTime.now();
 
     public Database(String dbURL, String dbUsername, String dbPassword) {
         this.dbURL = dbURL;
@@ -42,7 +42,7 @@ public class Database {
         return musicBandSet;
     }
 
-    public LocalDateTime getInitializationTime() {
+    public ZonedDateTime getInitializationTime() {
         return initializationTime;
     }
 

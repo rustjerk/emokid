@@ -1,34 +1,31 @@
 package ru.sigsegv.emokid.common;
 
-import java.io.*;
+import ru.sigsegv.emokid.common.serde.DeserializeException;
+import ru.sigsegv.emokid.common.serde.SerDe;
+import ru.sigsegv.emokid.common.serde.json.JsonDeserializer;
+import ru.sigsegv.emokid.common.serde.json.JsonPrettySerializer;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
 
 public class NetworkCodec {
     public static final int MAX_MESSAGE_SIZE = 32 * 1024;
 
-    private static final ByteArrayOutputStream cachedBAOS = new ByteArrayOutputStream(MAX_MESSAGE_SIZE);
-
-    public static ByteBuffer encodeObject(Object object) throws IOException {
-        synchronized (cachedBAOS) {
-            cachedBAOS.reset();
-            var stream = new ObjectOutputStream(cachedBAOS);
-            stream.writeObject(object);
-            if (cachedBAOS.size() > MAX_MESSAGE_SIZE)
-                throw new IOException("message to long");
-            return ByteBuffer.wrap(cachedBAOS.toByteArray());
-        }
+    public static ByteBuffer encodeObject(Object object) {
+        var serializer = new JsonPrettySerializer();
+        SerDe.serialize(serializer, object);
+        return ByteBuffer.wrap(serializer.getString().getBytes(StandardCharsets.UTF_8));
     }
 
-    public static Object decodeObject(ByteBuffer sourceBuffer) throws IOException {
-        var offset = sourceBuffer.arrayOffset();
-        var length = sourceBuffer.position();
-        var rawInput = new ByteArrayInputStream(sourceBuffer.array(), offset, length);
-        var input = new ObjectInputStream(rawInput);
-
+    public static Object decodeObject(ByteBuffer sourceBuffer, Class<?> type) throws IOException {
+        var str = new String(sourceBuffer.array(), 0, sourceBuffer.position(), StandardCharsets.UTF_8);
+        var deserializer = new JsonDeserializer(new Scanner(str));
         try {
-            return input.readObject();
-        } catch (ClassNotFoundException e) {
-            throw new IOException("unknown class", e);
+            return SerDe.deserialize(deserializer, type);
+        } catch (DeserializeException e) {
+            throw new IOException(e);
         }
     }
 }

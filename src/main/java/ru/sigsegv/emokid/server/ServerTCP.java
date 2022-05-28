@@ -73,7 +73,7 @@ public class ServerTCP extends Server {
             try {
                 var bb = ByteBuffer.wrap(buf, 0, offs);
                 bb.position(offs);
-                data = NetworkCodec.decodeObject(bb);
+                data = NetworkCodec.decodeObject(bb, Request.class);
                 break;
             } catch (EOFException ignored) {
             }

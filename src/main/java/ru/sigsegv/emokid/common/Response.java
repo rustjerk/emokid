@@ -1,8 +1,8 @@
 package ru.sigsegv.emokid.common;
 
-import java.io.Serializable;
+import ru.sigsegv.emokid.common.serde.Nullable;
 
-public record Response<T>(Status status, T payload) implements Serializable {
+public record Response<T>(Status status, @Nullable T payload) {
     public static Response<String> success() {
         return new Response<>(Status.SUCCESS, null);
     }

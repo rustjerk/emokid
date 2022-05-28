@@ -11,11 +11,13 @@ import java.time.ZonedDateTime;
  */
 public record MusicBand(@SkipDeserialization(deserializer = CommandDeserializer.class)
                         long id,
+                        @Nullable
                         @SkipDeserialization(deserializer = CommandDeserializer.class)
                         String owner,
                         @Validate(NonBlankValidator.class)
                         String name,
                         Coordinates coordinates,
+                        @Nullable
                         @SkipDeserialization(deserializer = CommandDeserializer.class)
                         ZonedDateTime creationDate,
                         @Validate(NumberOfParticipantsValidator.class)

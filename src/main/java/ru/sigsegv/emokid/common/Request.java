@@ -1,8 +1,8 @@
 package ru.sigsegv.emokid.common;
 
-import java.io.Serializable;
+import ru.sigsegv.emokid.common.serde.Nullable;
 
-public record Request<T>(Command command, T argument, String authToken) implements Serializable {
+public record Request<T>(Command command, @Nullable T argument, @Nullable String authToken) {
     public Request(Command command, T argument) {
         this(command, argument, null);
     }

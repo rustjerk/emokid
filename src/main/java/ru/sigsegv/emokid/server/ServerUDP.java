@@ -58,7 +58,7 @@ public class ServerUDP extends Server {
 
         var buf = ByteBuffer.wrap(packet.getData(), packet.getOffset(), packet.getLength());
         buf.position(packet.getLength());
-        var data = NetworkCodec.decodeObject(buf);
+        var data = NetworkCodec.decodeObject(buf, Request.class);
 
         if (!(data instanceof Request<?> request))
             throw new IOException("request expected");

@@ -88,9 +88,10 @@ public class JsonPrettySerializer implements Serializer {
                 isFirst = false;
             }
 
+            @SuppressWarnings("unchecked")
             @Override
-            public void serializeValue(Object value) {
-                SerDe.serialize(JsonPrettySerializer.this, value);
+            public void serializeValue(Object value, Class<?> type) {
+                SerDe.getSerializer((Class<Object>) type).serialize(JsonPrettySerializer.this, value);
             }
 
             @Override
@@ -114,12 +115,13 @@ public class JsonPrettySerializer implements Serializer {
         return new Seq() {
             private boolean isFirst = true;
 
+            @SuppressWarnings("unchecked")
             @Override
-            public void serializeValue(Object value) {
+            public void serializeValue(Object value, Class<?> type) {
                 buffer.append(isFirst ? "\n" : ",\n");
                 isFirst = false;
                 buffer.append(curIndent);
-                SerDe.serialize(JsonPrettySerializer.this, value);
+                SerDe.getSerializer((Class<Object>) type).serialize(JsonPrettySerializer.this, value);
             }
 
             @Override

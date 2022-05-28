@@ -16,13 +16,21 @@ public interface Serializer {
     interface Map {
         void serializeKey(String key);
 
-        void serializeValue(Object value);
+        default void serializeValue(Object value) {
+            serializeValue(value, value.getClass());
+        }
+
+        void serializeValue(Object value, Class<?> type);
 
         void finish();
     }
 
     interface Seq {
-        void serializeValue(Object value);
+        default void serializeValue(Object value) {
+            serializeValue(value, value.getClass());
+        }
+
+        void serializeValue(Object value, Class<?> type);
 
         void finish();
     }

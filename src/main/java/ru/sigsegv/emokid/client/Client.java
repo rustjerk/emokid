@@ -89,7 +89,7 @@ public abstract class Client {
             if (numRead == 0) continue;
             if (numRead == -1) throw new EOFException("reached EOF while receiving response");
 
-            var response = NetworkCodec.decodeObject(buffer);
+            var response = NetworkCodec.decodeObject(buffer, Response.class);
             if (response != null) {
                 if (!(response instanceof Response<?>))
                     throw new IOException("invalid response");
