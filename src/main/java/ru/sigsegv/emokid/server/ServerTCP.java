@@ -89,7 +89,12 @@ public class ServerTCP extends Server {
         LOG.info("Handling request from " + socket.getRemoteSocketAddress());
 
         var response = context.requestHandler.handle(request);
-        executeSocketTask(context.writeExecutor, socket, s -> clientWrite(s, response));
+
+        if (response.eventBuffer() != null) {
+            executeSocketTask(context.writeExecutor, socket, s -> clientWriteEvents(s, response.eventBuffer()));
+        } else {
+            executeSocketTask(context.writeExecutor, socket, s -> clientWrite(s, response));
+        }
     }
 
     private void clientWrite(Socket socket, Response<?> response) throws IOException {
@@ -97,6 +102,23 @@ public class ServerTCP extends Server {
 
         var output = socket.getOutputStream();
         output.write(NetworkCodec.encodeObject(response).array());
+        socket.close();
+    }
+
+    private void clientWriteEvents(Socket socket, EventBuffer eventBuffer) throws IOException {
+        LOG.info("Sending events to " + socket.getRemoteSocketAddress());
+
+        var output = socket.getOutputStream();
+
+        while (true) {
+            var events = eventBuffer.receive();
+            try {
+                output.write(NetworkCodec.encodeObject(events).array());
+            } catch (IOException e) {
+                break;
+            }
+        }
+
         socket.close();
     }
 }

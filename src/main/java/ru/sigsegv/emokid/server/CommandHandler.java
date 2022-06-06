@@ -3,10 +3,7 @@ package ru.sigsegv.emokid.server;
 import ru.sigsegv.emokid.common.Command;
 import ru.sigsegv.emokid.common.Request;
 import ru.sigsegv.emokid.common.Response;
-import ru.sigsegv.emokid.common.model.Credentials;
-import ru.sigsegv.emokid.common.model.DatabaseInfo;
-import ru.sigsegv.emokid.common.model.MusicBand;
-import ru.sigsegv.emokid.common.model.Studio;
+import ru.sigsegv.emokid.common.model.*;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -28,6 +25,7 @@ public class CommandHandler implements RequestHandler {
     private final Database database;
 
     private final HashMap<Command, CommandEntry> commands = gatherCommands();
+    private final EventBufferSet eventBuffers = new EventBufferSet();
 
     public CommandHandler(Database database) {
         this.database = database;
@@ -60,9 +58,11 @@ public class CommandHandler implements RequestHandler {
             var id = res.getLong(1);
             band = band.withParams(id, ctx.currentUser, creationDate);
             database.getMusicBandSet().add(band);
-        }
 
-        return Response.success();
+            eventBuffers.send(new EventUpdate(band));
+
+            return Response.success(id);
+        }
     }
 
     @Handler(Command.ADD_IF_MAX)
@@ -80,7 +80,12 @@ public class CommandHandler implements RequestHandler {
             stmt.setString(1, ctx.currentUser);
             stmt.execute();
 
-            database.getMusicBandSet().removeIf(b -> b.owner().equals(ctx.currentUser));
+            database.getMusicBandSet().removeIf(b -> {
+                var del = b.owner().equals(ctx.currentUser);
+                if (del) eventBuffers.send(new EventDelete(b.id()));
+                return del;
+            });
+
             return Response.success();
         }
     }
@@ -177,6 +182,8 @@ public class CommandHandler implements RequestHandler {
             Set<MusicBand> set = database.getMusicBandSet();
             var deleted = set.removeIf(b -> b.id() == id && b.owner().equals(ctx.currentUser));
 
+            eventBuffers.send(new EventDelete(id));
+
             return Response.success(deleted);
         }
     }
@@ -190,8 +197,12 @@ public class CommandHandler implements RequestHandler {
             stmt.executeUpdate();
 
             Set<MusicBand> set = database.getMusicBandSet();
-            var deleted = set.removeIf(b -> b.owner().equals(ctx.currentUser)
-                    && b.name().compareTo(band.name()) > 0);
+            var deleted = set.removeIf(b -> {
+                var del = b.owner().equals(ctx.currentUser)
+                        && b.name().compareTo(band.name()) > 0;
+                if (del) eventBuffers.send(new EventDelete(b.id()));
+                return del;
+            });
 
             return Response.success(deleted);
         }
@@ -206,8 +217,12 @@ public class CommandHandler implements RequestHandler {
             stmt.executeUpdate();
 
             Set<MusicBand> set = database.getMusicBandSet();
-            var deleted = set.removeIf(b -> b.owner().equals(ctx.currentUser)
-                    && b.name().compareTo(band.name()) < 0);
+            var deleted = set.removeIf(b -> {
+                var del = b.owner().equals(ctx.currentUser)
+                        && b.name().compareTo(band.name()) < 0;
+                if (del) eventBuffers.send(new EventDelete(b.id()));
+                return del;
+            });
 
             return Response.success(deleted);
         }
@@ -217,6 +232,13 @@ public class CommandHandler implements RequestHandler {
     private Response<?> commandShow(CommandContext ctx) {
         var bands = database.getMusicBandSet().stream().sorted().collect(Collectors.toList());
         return Response.success(bands);
+    }
+
+    @Handler(Command.SUBSCRIBE)
+    private Response<?> commandSubscribe(CommandContext ctx) {
+        var eventBuffer = new EventBuffer();
+        eventBuffers.add(eventBuffer);
+        return Response.subscription(eventBuffer);
     }
 
     @Handler(Command.UPDATE)
@@ -244,6 +266,8 @@ public class CommandHandler implements RequestHandler {
             var oldBand = set.stream().filter(b -> b.id() == band.id()).findFirst().orElseThrow();
             set.remove(oldBand);
             set.add(band.withParams(oldBand.id(), oldBand.owner(), oldBand.creationDate()));
+
+            eventBuffers.send(new EventUpdate(band));
 
             return Response.success(true);
         }

@@ -1,14 +1,23 @@
 package ru.sigsegv.emokid.common;
 
 import ru.sigsegv.emokid.common.serde.Nullable;
+import ru.sigsegv.emokid.server.EventBuffer;
 
-public record Response<T>(Status status, @Nullable T payload) {
+public record Response<T>(Status status, @Nullable T payload, @Nullable EventBuffer eventBuffer) {
+    public Response(Status status, T payload) {
+        this(status, payload, null);
+    }
+
     public static Response<String> success() {
         return new Response<>(Status.SUCCESS, null);
     }
 
     public static <T> Response<T> success(T payload) {
         return new Response<>(Status.SUCCESS, payload);
+    }
+
+    public static Response<Void> subscription(EventBuffer eventBuffer) {
+        return new Response<>(Status.SUCCESS, null, eventBuffer);
     }
 
     public static Response<String> invalidRequest() {

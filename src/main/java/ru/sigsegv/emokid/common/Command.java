@@ -14,5 +14,6 @@ public enum Command {
     REMOVE_GREATER,
     REMOVE_LOWER,
     SHOW,
+    SUBSCRIBE,
     UPDATE
 }
