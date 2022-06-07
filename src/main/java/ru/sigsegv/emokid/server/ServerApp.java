@@ -19,7 +19,7 @@ public class ServerApp {
 
         var config = readConfig(args[0]);
 
-        var database = new Database(config.dbURL(), config.dbUser(), config.dbPass());
+        var database = new Database(config.dbURL());
         var handler = new CommandHandler(database);
         var context = new ServerContext(handler);
 

@@ -56,7 +56,7 @@ public class JsonDeserializer implements Deserializer {
     @Override
     public double deserializeDouble() throws DeserializeException {
         expect(JsonToken.NUMBER, "float expected");
-        return (long) tokenizer.getNumber();
+        return tokenizer.getNumber();
     }
 
     @Override

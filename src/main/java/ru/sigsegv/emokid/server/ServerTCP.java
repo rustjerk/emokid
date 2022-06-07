@@ -27,6 +27,7 @@ public class ServerTCP extends Server {
 
     @Override
     public void serve() throws IOException {
+        LOG.info("TCP server started");
         while (context.isRunning.get()) {
             try {
                 var clientSocket = serverSocket.accept();
@@ -91,7 +92,7 @@ public class ServerTCP extends Server {
         var response = context.requestHandler.handle(request);
 
         if (response.eventBuffer() != null) {
-            executeSocketTask(context.writeExecutor, socket, s -> clientWriteEvents(s, response.eventBuffer()));
+            executeSocketTask(context.handleExecutor, socket, s -> clientWriteEvents(s, response.eventBuffer()));
         } else {
             executeSocketTask(context.writeExecutor, socket, s -> clientWrite(s, response));
         }

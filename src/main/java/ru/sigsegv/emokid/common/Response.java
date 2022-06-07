@@ -20,6 +20,10 @@ public record Response<T>(Status status, @Nullable T payload, @Nullable EventBuf
         return new Response<>(Status.SUCCESS, null, eventBuffer);
     }
 
+    public static Response<String> unauthorized() {
+        return new Response<>(Status.ERROR, "unauthorized");
+    }
+
     public static Response<String> invalidRequest() {
         return new Response<>(Status.ERROR, "invalid request");
     }

@@ -1,5 +1,10 @@
 package ru.sigsegv.emokid.server;
 
+import com.yandex.ydb.core.StatusCode;
+import com.yandex.ydb.table.query.Params;
+import com.yandex.ydb.table.transaction.TxControl;
+import com.yandex.ydb.table.values.OptionalValue;
+import com.yandex.ydb.table.values.PrimitiveValue;
 import ru.sigsegv.emokid.common.Command;
 import ru.sigsegv.emokid.common.Request;
 import ru.sigsegv.emokid.common.Response;
@@ -31,42 +36,68 @@ public class CommandHandler implements RequestHandler {
         this.database = database;
     }
 
-    @Handler(Command.ADD)
-    private Response<?> commandAdd(CommandContext ctx, MusicBand band) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var creationDate = ZonedDateTime.now();
+    private Response<?> addOrUpdate(CommandContext ctx, MusicBand band, boolean update) {
+        var set = database.getMusicBandSet();
+        var oldBand = set.stream().filter(b -> b.id() == band.id()).findFirst();
+        if (oldBand.isPresent() && !oldBand.get().owner().equals(ctx.currentUser()))
+            return Response.unauthorized();
 
-            var stmt = conn.prepareStatement(
-                    "insert into music_bands (owner, name, coord_x, coord_y," +
-                            "creation_date, num_participants, description, " +
-                            "genre, studio_name, studio_address\n) " +
-                            "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id");
+        var query = "DECLARE $id AS Uint64;" +
+                "DECLARE $owner AS Utf8;" +
+                "DECLARE $name AS Utf8;" +
+                "DECLARE $coord_x AS Double;" +
+                "DECLARE $coord_y AS Int64;" +
+                "DECLARE $creation_date AS Datetime;" +
+                "DECLARE $num_participants AS Int32;" +
+                "DECLARE $description AS Utf8;" +
+                "DECLARE $genre AS Utf8?;" +
+                "DECLARE $studio_name AS Utf8?;" +
+                "DECLARE $studio_address AS Utf8?;" +
+                "UPSERT INTO music_bands (id, owner, name, coord_x, coord_y, creation_date, num_participants, description, genre, studio_name, studio_address)" +
+                "VALUES ($id, $owner, $name, $coord_x, $coord_y, $creation_date, $num_participants, $description, $genre, $studio_name, $studio_address)";
 
-            stmt.setString(1, ctx.currentUser);
-            stmt.setString(2, band.name());
-            stmt.setDouble(3, band.coordinates().x());
-            stmt.setLong(4, band.coordinates().y());
-            stmt.setObject(5, creationDate.toOffsetDateTime());
-            stmt.setInt(6, band.numberOfParticipants());
-            stmt.setString(7, band.description());
-            stmt.setString(8, band.genre() == null ? null : band.genre().name());
-            stmt.setString(9, band.studio() == null ? null : band.studio().name());
-            stmt.setString(10, band.studio() == null ? null : band.studio().address());
+        var id = update ? band.id() : database.getNextID();
+        var creationDate = update ? band.creationDate() : ZonedDateTime.now();
 
-            var res = stmt.executeQuery();
-            res.next();
-            var id = res.getLong(1);
-            band = band.withParams(id, ctx.currentUser, creationDate);
-            database.getMusicBandSet().add(band);
+        var params = Params.create()
+                .put("$id", PrimitiveValue.uint64(id))
+                .put("$owner", PrimitiveValue.utf8(ctx.currentUser()))
+                .put("$name", PrimitiveValue.utf8(band.name()))
+                .put("$coord_x", PrimitiveValue.float64(band.coordinates().x()))
+                .put("$coord_y", PrimitiveValue.int64(band.coordinates().y()))
+                .put("$creation_date", PrimitiveValue.datetime(creationDate.toLocalDateTime()))
+                .put("$num_participants", PrimitiveValue.int32(band.numberOfParticipants()))
+                .put("$description", PrimitiveValue.utf8(band.description()));
 
-            eventBuffers.send(new EventUpdate(band));
+        if (band.genre() != null)
+            params = params.put("$genre", OptionalValue.of(PrimitiveValue.utf8(band.genre().name())));
 
-            return Response.success(id);
+        if (band.studio() != null) {
+            if (band.studio().name() != null)
+                params = params.put("$studio_name", OptionalValue.of(PrimitiveValue.utf8(band.studio().name())));
+
+            params = params.put("$studio_address", OptionalValue.of(PrimitiveValue.utf8(band.studio().address())));
         }
+
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        var finalParams = params;
+        database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, finalParams)).join().expect("failed to execute query");
+
+        var newBand = band.withParams(id, ctx.currentUser(), creationDate);
+        oldBand.ifPresent(set::remove);
+        set.add(newBand);
+        eventBuffers.send(new EventUpdate(newBand));
+
+        return Response.success(id);
+    }
+
+    @Handler(Command.ADD)
+    private Response<?> commandAdd(CommandContext ctx, MusicBand band) {
+        return addOrUpdate(ctx, band, false);
     }
 
     @Handler(Command.ADD_IF_MAX)
-    private Response<?> commandAddIfMax(CommandContext ctx, MusicBand band) throws SQLException {
+    private Response<?> commandAddIfMax(CommandContext ctx, MusicBand band) {
         var set = database.getMusicBandSet();
         var max = set.stream().max(Comparator.naturalOrder()).orElse(band);
         if (max.compareTo(band) > 0) return Response.success();
@@ -74,20 +105,23 @@ public class CommandHandler implements RequestHandler {
     }
 
     @Handler(Command.CLEAR)
-    private Response<?> commandClear(CommandContext ctx) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("delete from music_bands where owner = ?");
-            stmt.setString(1, ctx.currentUser);
-            stmt.execute();
+    private Response<?> commandClear(CommandContext ctx) {
+        var query = "DECLARE $owner AS Utf8;" +
+                "DELETE FROM music_bands WHERE owner = $owner";
 
-            database.getMusicBandSet().removeIf(b -> {
-                var del = b.owner().equals(ctx.currentUser);
-                if (del) eventBuffers.send(new EventDelete(b.id()));
-                return del;
-            });
+        var params = Params.create()
+                .put("$owner", PrimitiveValue.utf8(ctx.currentUser()));
 
-            return Response.success();
-        }
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params)).join().expect("failed to execute query");
+
+        database.getMusicBandSet().removeIf(b -> {
+            var del = b.owner().equals(ctx.currentUser);
+            if (del) eventBuffers.send(new EventDelete(b.id()));
+            return del;
+        });
+
+        return Response.success();
     }
 
     @Handler(Command.COUNT_GREATER_THAN_STUDIO)
@@ -106,30 +140,58 @@ public class CommandHandler implements RequestHandler {
     }
 
     @Handler(value = Command.LOGIN, requiresAuth = false)
-    private Response<?> commandLogin(CommandContext ctx, Credentials credentials) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("select salt from users where username = ?");
-            stmt.setString(1, credentials.username());
+    private Response<?> commandLogin(CommandContext ctx, Credentials credentials) {
+        var txControl = TxControl.serializableRw().setCommitTx(true);
 
-            var res = stmt.executeQuery();
-            if (!res.next()) return Response.noSuchUser();
+        String salt;
+        {
+            var query = "DECLARE $username AS Utf8;" +
+                    "SELECT salt FROM users WHERE username = $username";
 
-            var salt = res.getString(1);
-            var password = hashPassword(credentials.password(), salt);
+            var params = Params.create()
+                    .put("$username", PrimitiveValue.utf8(credentials.username()));
 
-            stmt = conn.prepareStatement("select * from users where username = ? and password = ?");
-            stmt.setString(1, credentials.username());
-            stmt.setString(2, password);
-            if (!stmt.executeQuery().next()) return Response.invalidPassword();
+            var result = database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                    .join().expect("failed to execute query").getResultSet(0);
 
-            var token = generateToken();
-            stmt = conn.prepareStatement("insert into auth_tokens values (?, ?) on conflict (username) do update set token = excluded.token");
-            stmt.setString(1, credentials.username());
-            stmt.setString(2, token);
-            stmt.execute();
+            if (!result.next()) return Response.noSuchUser();
 
-            return Response.success(token);
+            salt = result.getColumn("salt").getUtf8();
         }
+
+        var password = hashPassword(credentials.password(), salt);
+
+        {
+            var query = "DECLARE $username AS Utf8;" +
+                    "DECLARE $password AS Utf8;" +
+                    "SELECT * FROM users WHERE username = $username AND password = $password";
+
+            var params = Params.create()
+                    .put("$username", PrimitiveValue.utf8(credentials.username()))
+                    .put("$password", PrimitiveValue.utf8(password));
+
+            var result = database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                    .join().expect("failed to execute query").getResultSet(0);
+
+            if (!result.next()) return Response.invalidPassword();
+        }
+
+        var token = generateToken();
+
+        {
+            var query = "DECLARE $username AS Utf8;" +
+                    "DECLARE $token AS Utf8;" +
+                    "UPSERT INTO auth_tokens (username, token) VALUES ($username, $token)";
+
+            var params = Params.create()
+                    .put("$username", PrimitiveValue.utf8(credentials.username()))
+                    .put("$token", PrimitiveValue.utf8(token));
+
+            database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                    .join().expect("failed to execute query");
+        }
+
+        return Response.success(token);
     }
 
     @Handler(Command.MIN_BY_STUDIO)
@@ -154,78 +216,100 @@ public class CommandHandler implements RequestHandler {
     }
 
     @Handler(value = Command.REGISTER, requiresAuth = false)
-    private Response<?> commandRegister(CommandContext ctx, Credentials credentials) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var salt = generateSalt();
-            var password = hashPassword(credentials.password(), salt);
-            var stmt = conn.prepareStatement("insert into users values (?, ?, ?)");
-            stmt.setString(1, credentials.username());
-            stmt.setString(2, password);
-            stmt.setString(3, salt);
-            try {
-                stmt.execute();
-                return Response.success();
-            } catch (SQLException e) {
-                return Response.usernameTaken();
-            }
+    private Response<?> commandRegister(CommandContext ctx, Credentials credentials) {
+        var salt = generateSalt();
+        var password = hashPassword(credentials.password(), salt);
+
+        var query = "DECLARE $username AS Utf8;" +
+                "DECLARE $password AS Utf8;" +
+                "DECLARE $salt AS Utf8;" +
+                "INSERT INTO users (username, password, salt) VALUES ($username, $password, $salt)";
+
+        var params = Params.create()
+                .put("$username", PrimitiveValue.utf8(credentials.username()))
+                .put("$password", PrimitiveValue.utf8(password))
+                .put("$salt", PrimitiveValue.utf8(salt));
+
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        var result = database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params)).join();
+        if (result.getCode() == StatusCode.PRECONDITION_FAILED) {
+            return Response.usernameTaken();
         }
+
+        result.expect("failed to execute query");
+        return Response.success();
     }
 
     @Handler(Command.REMOVE_BY_ID)
-    private Response<?> commandRemoveById(CommandContext ctx, Long id) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("delete from music_bands where id = ? and owner = ?");
-            stmt.setLong(1, id);
-            stmt.setString(2, ctx.currentUser);
-            stmt.executeUpdate();
+    private Response<?> commandRemoveById(CommandContext ctx, Long id) {
+        var query = "DECLARE $id AS Uint64;" +
+                "DECLARE $owner AS Utf8;" +
+                "DELETE FROM music_bands WHERE id = $id AND owner = $owner";
 
-            Set<MusicBand> set = database.getMusicBandSet();
-            var deleted = set.removeIf(b -> b.id() == id && b.owner().equals(ctx.currentUser));
+        var params = Params.create()
+                .put("$id", PrimitiveValue.uint64(id))
+                .put("$owner", PrimitiveValue.utf8(ctx.currentUser));
 
-            eventBuffers.send(new EventDelete(id));
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                .join().expect("failed to execute query");
 
-            return Response.success(deleted);
-        }
+        var set = database.getMusicBandSet();
+        var deleted = set.removeIf(b -> b.id() == id && b.owner().equals(ctx.currentUser));
+
+        eventBuffers.send(new EventDelete(id));
+
+        return Response.success(deleted);
     }
 
     @Handler(Command.REMOVE_GREATER)
-    private Response<?> commandRemoveGreater(CommandContext ctx, MusicBand band) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("delete from music_bands where owner = ? and name > ?");
-            stmt.setString(1, ctx.currentUser);
-            stmt.setString(2, band.name());
-            stmt.executeUpdate();
+    private Response<?> commandRemoveGreater(CommandContext ctx, MusicBand band) {
+        var query = "DECLARE $name AS Utf8;" +
+                "DECLARE $owner AS Utf8;" +
+                "DELETE FROM music_bands WHERE owner = $owner AND name > $name";
 
-            Set<MusicBand> set = database.getMusicBandSet();
-            var deleted = set.removeIf(b -> {
-                var del = b.owner().equals(ctx.currentUser)
-                        && b.name().compareTo(band.name()) > 0;
-                if (del) eventBuffers.send(new EventDelete(b.id()));
-                return del;
-            });
+        var params = Params.create()
+                .put("$name", PrimitiveValue.utf8(band.name()))
+                .put("$owner", PrimitiveValue.utf8(ctx.currentUser));
 
-            return Response.success(deleted);
-        }
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                .join().expect("failed to execute query");
+
+        var set = database.getMusicBandSet();
+        var deleted = set.removeIf(b -> {
+            var del = b.owner().equals(ctx.currentUser)
+                    && b.name().compareTo(band.name()) > 0;
+            if (del) eventBuffers.send(new EventDelete(b.id()));
+            return del;
+        });
+
+        return Response.success(deleted);
     }
 
     @Handler(Command.REMOVE_LOWER)
-    private Response<?> commandRemoveLower(CommandContext ctx, MusicBand band) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("delete from music_bands where owner = ? and name < ?");
-            stmt.setString(1, ctx.currentUser);
-            stmt.setString(2, band.name());
-            stmt.executeUpdate();
+    private Response<?> commandRemoveLower(CommandContext ctx, MusicBand band) {
+        var query = "DECLARE $name AS Utf8;" +
+                "DECLARE $owner AS Utf8;" +
+                "DELETE FROM music_bands WHERE owner = $owner AND name < $name";
 
-            Set<MusicBand> set = database.getMusicBandSet();
-            var deleted = set.removeIf(b -> {
-                var del = b.owner().equals(ctx.currentUser)
-                        && b.name().compareTo(band.name()) < 0;
-                if (del) eventBuffers.send(new EventDelete(b.id()));
-                return del;
-            });
+        var params = Params.create()
+                .put("$name", PrimitiveValue.utf8(band.name()))
+                .put("$owner", PrimitiveValue.utf8(ctx.currentUser));
 
-            return Response.success(deleted);
-        }
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                .join().expect("failed to execute query");
+
+        var set = database.getMusicBandSet();
+        var deleted = set.removeIf(b -> {
+            var del = b.owner().equals(ctx.currentUser)
+                    && b.name().compareTo(band.name()) < 0;
+            if (del) eventBuffers.send(new EventDelete(b.id()));
+            return del;
+        });
+
+        return Response.success(deleted);
     }
 
     @Handler(Command.SHOW)
@@ -242,35 +326,8 @@ public class CommandHandler implements RequestHandler {
     }
 
     @Handler(Command.UPDATE)
-    private Response<?> commandUpdate(CommandContext ctx, MusicBand band) throws SQLException {
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("update music_bands set " +
-                    "name = ?, coord_x = ?, coord_y = ?, num_participants = ?, description = ?," +
-                    "genre = ?, studio_name = ?, studio_address = ? where owner = ? and id = ?");
-
-            stmt.setString(1, band.name());
-            stmt.setDouble(2, band.coordinates().x());
-            stmt.setLong(3, band.coordinates().y());
-            stmt.setInt(4, band.numberOfParticipants());
-            stmt.setString(5, band.description());
-            stmt.setString(6, band.genre() == null ? null : band.genre().name());
-            stmt.setString(7, band.studio() == null ? null : band.studio().name());
-            stmt.setString(8, band.studio() == null ? null : band.studio().address());
-            stmt.setString(9, ctx.currentUser);
-            stmt.setLong(10, band.id());
-
-            var count = stmt.executeUpdate();
-            if (count == 0) return Response.success(false);
-
-            var set = database.getMusicBandSet();
-            var oldBand = set.stream().filter(b -> b.id() == band.id()).findFirst().orElseThrow();
-            set.remove(oldBand);
-            set.add(band.withParams(oldBand.id(), oldBand.owner(), oldBand.creationDate()));
-
-            eventBuffers.send(new EventUpdate(band));
-
-            return Response.success(true);
-        }
+    private Response<?> commandUpdate(CommandContext ctx, MusicBand band) {
+        return addOrUpdate(ctx, band, true);
     }
 
     @Override
@@ -304,13 +361,17 @@ public class CommandHandler implements RequestHandler {
     private String validateAuthToken(String token) throws SQLException {
         if (token == null) return null;
 
-        try (var conn = database.getConnection()) {
-            var stmt = conn.prepareStatement("select username from auth_tokens where token = ?");
-            stmt.setString(1, token);
-            var res = stmt.executeQuery();
-            if (!res.next()) return null;
-            return res.getString(1);
-        }
+        var query = "DECLARE $token AS Utf8;" +
+                "SELECT username FROM auth_tokens WHERE token = $token";
+
+        var params = Params.create()
+                .put("$token", PrimitiveValue.utf8(token));
+
+        var txControl = TxControl.serializableRw().setCommitTx(true);
+        var result = database.getConnection().supplyResult(session -> session.executeDataQuery(query, txControl, params))
+                .join().expect("failed to execute query").getResultSet(0);
+        if (!result.next()) return null;
+        return result.getColumn("username").getUtf8();
     }
 
     private String generateToken() {

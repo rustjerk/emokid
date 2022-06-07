@@ -27,6 +27,8 @@ public class ServerUDP extends Server {
 
     @Override
     public void serve() throws IOException {
+        LOG.info("UDP server started");
+
         while (context.isRunning.get()) {
             try {
                 var buf = new byte[NetworkCodec.MAX_MESSAGE_SIZE];
